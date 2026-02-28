@@ -49,6 +49,11 @@ def shortest_steps(G: nx.Graph, src: str, dst: str) -> float:
         return np.nan
 
 
+def within_code(base: str, dest: str, community: Dict[str, int]) -> str:
+    """W if within-community, X if cross-community."""
+    return "W" if community[base] == community[dest] else "X"
+
+
 def transition_tag(
     plausible: bool,
     base_is_boundary: bool,
@@ -57,7 +62,7 @@ def transition_tag(
 ) -> str:
     """
     Tag format: P/I + B/NB + distance(1..3)
-    If steps > max_steps_label (or NaN), label as '3+' or 'NA' (edit if you prefer).
+    Example: PB1, INB2
     """
     p = "P" if plausible else "I"
     b = "B" if base_is_boundary else "NB"
@@ -69,6 +74,20 @@ def transition_tag(
         d = str(steps_int) if steps_int <= max_steps_label else f"{max_steps_label}+"
 
     return f"{p}{b}{d}"
+
+
+def transition_tag_wx(
+    plausible: bool,
+    base_is_boundary: bool,
+    steps: float,
+    wx: str,
+    max_steps_label: int = 3
+) -> str:
+    """
+    Tag format: (P/I + B/NB + distance) + W/X
+    Example: PB1W, INB2X
+    """
+    return f"{transition_tag(plausible, base_is_boundary, steps, max_steps_label)}{wx}"
 
 
 def classify_T(p1: bool, p2: bool) -> str:
@@ -88,7 +107,8 @@ def unordered_pair_tag(tag_a: str, tag_b: str, sep: str = "__") -> str:
 
 # ---------- 3) Transition-level table (base -> dest) ----------
 
-boundary_cache = {n: is_boundary_node(G, n, COMMUNITY) for n in G.nodes}
+base_boundary = {n: is_boundary_node(G, n, COMMUNITY) for n in G.nodes}
+dest_boundary = base_boundary  # boundary-ness is a node property
 
 rows = []
 for base in G.nodes:
@@ -98,15 +118,29 @@ for base in G.nodes:
 
         plausible = G.has_edge(base, dest)
         steps = shortest_steps(G, base, dest)
-        tag = transition_tag(plausible, boundary_cache[base], steps, max_steps_label=3)
+
+        wx = within_code(base, dest, COMMUNITY)
+        same_comm = (wx == "W")
+
+        tag_old = transition_tag(plausible, base_boundary[base], steps, max_steps_label=3)  # PB1
+        tag_new = transition_tag_wx(plausible, base_boundary[base], steps, wx, max_steps_label=3)  # PB1W
 
         rows.append({
             "base": base,
             "dest": dest,
+
             "plausible": plausible,
-            "base_is_boundary": boundary_cache[base],
             "steps": steps,
-            "transition_tag": tag,
+
+            "base_is_boundary": base_boundary[base],
+            "dest_is_boundary": dest_boundary[dest],
+
+            "same_community": same_comm,
+            "within_code": wx,  # W or X
+
+            "transition_tag": tag_old,        # e.g., PB1
+            "transition_tag_wx": tag_new,     # e.g., PB1W
+
             "base_community": COMMUNITY[base],
             "dest_community": COMMUNITY[dest],
         })
@@ -127,29 +161,48 @@ for base in G.nodes:
         s1 = shortest_steps(G, base, d1)
         s2 = shortest_steps(G, base, d2)
 
-        tA = transition_tag(p1, boundary_cache[base], s1, max_steps_label=3)
-        tB = transition_tag(p2, boundary_cache[base], s2, max_steps_label=3)
+        wx1 = within_code(base, d1, COMMUNITY)
+        wx2 = within_code(base, d2, COMMUNITY)
 
-        comp_T = classify_T(p1, p2)                    # keep your old one
-        comp_pair = unordered_pair_tag(tA, tB)         # NEW: pair of tags, order-invariant
+        # Keep BOTH tags per option
+        tA_old = transition_tag(p1, base_boundary[base], s1, max_steps_label=3)         # PB1
+        tA_new = transition_tag_wx(p1, base_boundary[base], s1, wx1, max_steps_label=3) # PB1W
+
+        tB_old = transition_tag(p2, base_boundary[base], s2, max_steps_label=3)         # INB2
+        tB_new = transition_tag_wx(p2, base_boundary[base], s2, wx2, max_steps_label=3) # INB2X
+
+        comp_T = classify_T(p1, p2)  # T0/T1/T2 based on plausibility
+
+        # Pair tags (order-invariant) for each tagging scheme
+        comp_pair_old = unordered_pair_tag(tA_old, tB_old)  # e.g., INB2__PB1
+        comp_pair_new = unordered_pair_tag(tA_new, tB_new)  # e.g., INB2X__PB1W
 
         q_rows.append({
             "base": base,
-            "base_is_boundary": boundary_cache[base],
+            "base_is_boundary": base_boundary[base],
             "base_community": COMMUNITY[base],
 
             "optionA_dest": d1,
             "optionA_plausible": p1,
             "optionA_steps": s1,
-            "optionA_tag": tA, 
+            "optionA_within_code": wx1,
+            "optionA_same_community": (wx1 == "W"),
+            "optionA_dest_is_boundary": dest_boundary[d1],
+            "optionA_tag": tA_old,         # PB1
+            "optionA_tag_wx": tA_new,      # PB1W
 
             "optionB_dest": d2,
             "optionB_plausible": p2,
             "optionB_steps": s2,
-            "optionB_tag": tB, 
+            "optionB_within_code": wx2,
+            "optionB_same_community": (wx2 == "W"),
+            "optionB_dest_is_boundary": dest_boundary[d2],
+            "optionB_tag": tB_old,         # INB2
+            "optionB_tag_wx": tB_new,      # INB2X
 
-            "comparison_type": comp_T,         
-            "comparison_pair_tag": comp_pair,
+            "comparison_type": comp_T,          # T0/T1/T2
+            "comparison_pair_tag": comp_pair_old,    # old pair tag (no W/X)
+            "comparison_pair_tag_wx": comp_pair_new, # new pair tag (with W/X)
         })
 
 questions_df = pd.DataFrame(q_rows)
