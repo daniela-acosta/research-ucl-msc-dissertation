@@ -149,7 +149,7 @@ for base in G.nodes:
         })
 
 transitions_df = pd.DataFrame(transition_rows)
-transitions_df.to_csv("data/transition_criteria_v2.csv", index=False)
+transitions_df.to_csv("../data/transition_criteria_v2.csv", index=False)
 
 
 # ---------- 5) 2AFC question candidates (base with two destinations) ----------
@@ -200,6 +200,6 @@ for base in G.nodes:
         })
 
 questions_df = pd.DataFrame(q_rows)
-questions_df.to_csv("data/2afc_question_candidates_v2.csv", index=False)
+questions_df.to_csv("../data/2afc_question_candidates_v2.csv", index=False)
 
 print("Wrote: transition_criteria.csv and 2afc_question_candidates.csv")
