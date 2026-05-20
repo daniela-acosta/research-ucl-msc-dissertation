@@ -170,12 +170,15 @@ The JATOS integration pattern (all three required in every component):
 ```
 /data/                        — CSV outputs (do not delete existing files, only add)
   2afc_question_candidates_v2.csv   — full 2AFC question pool with metadata
-  counterbalancing_table.csv        — pre-generated trial assignment table
+  counterbalancing_table.csv        — pre-generated trial assignment table (canonical source)
   (other CSVs from graph_definition.py)
 
 /experiment/                  — jsPsych experiment (main build target)
   package.json
-  components/                 — (empty, for reusable jsPsych components/plugins)
+  data/                       — copies of CSVs needed at runtime (JATOS can't serve ../data/)
+    counterbalancing_table.csv
+    2afc_question_candidates_v2.csv
+  components/                 — shared JS modules (IIFE pattern, no bundler)
 
 /planning/                    — Python analysis and design scripts
   counterbalancing.py         — generates counterbalancing_table.csv
@@ -351,7 +354,11 @@ The full walk sequence for each block is also stored as a flat array in
 | `base_node` | Base node label |
 | `option_left` | Destination node shown on the left |
 | `option_right` | Destination node shown on the right |
-| `response` | `'left'` or `'right'`, or `null` if timed out |
+| `left_is_option_a` | Boolean — whether the left option is optionA from the candidates CSV |
+| `chosen_position` | `'left'` or `'right'`, or `null` if timed out |
+| `chosen_node` | Node label of the chosen option, or `null` |
+| `chose_plausible` | Boolean — whether the chosen option is the plausible one (T1 only); `null` for T0/T2 |
+| `response` | Raw key pressed (`'f'` or `'j'`), or `null` if timed out |
 | `rt` | Response time in ms, or `null` if timed out |
 | `timed_out` | Boolean |
 | `group` | Counterbalancing group (1–4) |
@@ -448,30 +455,34 @@ stimuli** (nodes I, J, K — entirely separate from the main experiment nodes A�
 **fully deterministic walk** (I→J→K→I→J→K...). This ensures zero contamination of
 learning in the main task.
 
-Practice structure:
-1. **Comprehension check (cover task)** — question verifying understanding of the
-   symmetry judgement (e.g. "what should you do when a shape appears on screen?");
-   two attempts allowed; correct answer revealed if both attempts fail; participant
-   may continue regardless
-2. **Untimed cover task practice** — short deterministic walk with practice stimuli;
-   feedback given after each trial on cover task correctness
-3. **Timed cover task practice** — same deterministic walk, timed (same `stimulusDuration`
-   as main task); auditory/visual feedback if no response within time limit
-4. **Comprehension check (2AFC)** — question verifying understanding of the forced
-   choice (e.g. "in each question, what are you being asked to judge?"); two attempts
-   allowed; if participant failed the cover task comprehension check AND fails this one
-   after two attempts, they are blocked from continuing; otherwise correct answer
-   revealed and they may continue
-5. **Untimed 2AFC practice** — a few practice 2AFC trials using the deterministic practice
-   stimuli; feedback given on correctness after each trial
-6. **Timed 2AFC practice** — same, but timed (same `testMaxResponseTime` as main task);
-   feedback given if answered in time
+Practice structure (implemented in `practice.html`):
+1. **Comprehension check (cover task)** — up to 2 attempts; correct answer revealed if
+   both fail; participant may always continue regardless of outcome.
+2. **Untimed cover task practice** — deterministic walk; feedback after each step.
+3. **Timed cover task practice** — same walk, `stimulusDuration` ms limit; visual
+   warning if no response given within the time limit (no audio).
+4. **Comprehension check (2AFC)** — up to 2 attempts; if participant failed the cover
+   check AND fails this one, `jatos.abortStudy()` is called; otherwise correct answer
+   is revealed and they continue.
+5. **Untimed 2AFC practice** — `CONFIG.practiceTwoAFCTrials`; feedback after each trial.
+6. **Timed 2AFC practice** — same, `testMaxResponseTime` ms limit; feedback given.
 
-Practice walk length and number of practice test trials are separate configurable variables.
-Practice trial data is **not saved**.
+A transition screen ("now with a time limit") separates steps 2→3 and 5→6.
 
-The practice stimuli (I, J, K) need placeholder images like the main stimuli; name them
-`stimulus_I.png` etc. for consistency.
+**Implementation notes:**
+- `buildCheck({ questionHtml, choices, correctIndex, revealHtml, onBothFailed })` — local
+  helper in `practice.html` that builds a jsPsych `loopFunction` node (max 2 passes) +
+  a conditional reveal node. Returns `{ nodes, passed() }` where `passed()` reads the
+  closure at call time, so the 2AFC check can inspect the cover check outcome after it ran.
+- Practice 2AFC positions (`optionLeft`/`optionRight`) are **pre-assigned** in
+  `CONFIG.practiceTwoAFCTrials` — they are not randomised, so feedback is unambiguous.
+  Only main-task 2AFC trials randomise left/right at runtime.
+- Practice trial data is **not saved** — `on_finish` calls `jatos.startNextComponent()`,
+  not `jatos.submitResultData()`.
+- Practice stimuli use nodes I, J, K; images are named `stimulus_I.png` etc.
+
+Practice walk length and number of practice 2AFC trials are separate configurable
+variables (`practiceWalkLength`, `practiceQuestionsPerBlock`).
 
 ---
 
