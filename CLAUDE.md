@@ -201,6 +201,26 @@ CLAUDE.md                     — this file
 
 ---
 
+## Text Content and Stimuli
+
+### Text (instructions, consent, debrief, demographics)
+All participant-facing text is **lorem ipsum placeholder** for now. Use realistic
+placeholder structure (e.g. a consent form with the right sections, instructions with
+the right number of steps) but dummy text throughout. Final copy will be supplied later
+and dropped in without structural changes. Do not spend time on wording.
+
+### Stimuli
+Node stimuli (the shapes shown during the learning phase) will be supplied as image
+files later. For now use **placeholder images** — an HTML canvas-drawn shape, a
+coloured div, or a simple SVG is fine. The placeholder should occupy the correct
+screen region so layout can be validated without real assets.
+
+- Stimuli are loaded by node label (A–H); the naming convention for final image files
+  will be `stimulus_A.png`, `stimulus_B.png`, etc. — build the loader to expect this
+- Do not hardcode stimuli inline; always load from a path defined in the config object
+
+---
+
 ## Terminology Reference
 
 | Term | Meaning |
@@ -214,3 +234,228 @@ CLAUDE.md                     — this file
 | Cover task | Symmetry judgement shown during learning phase to mask true objective |
 | Block | One learning phase + one test phase |
 | Group | Counterbalancing group (1–4), determines which question variants a participant sees |
+
+---
+
+## Study Components
+
+The experiment is structured as a sequence of JATOS components, each a separate HTML
+page. They share logic via common JS modules in `/experiment/components/`.
+
+### Component sequence
+1. **Consent** — informed consent form; study ends immediately if declined
+2. **Demographics** — age, gender, handedness, native language, normal/corrected vision
+3. **Instructions** — explains the cover task (symmetry judgement) only; does NOT
+   mention the graph, communities, or transition structure
+4. **Practice** — shortened version of the main task (fewer learning steps, fewer
+   test questions); may give feedback; data saved but analysed separately
+5. **Main task** — 4 blocks of learning phase + test phase (see block structure above);
+   no feedback; all trial data saved to JATOS
+6. **Debrief** — reveals the true purpose of the study; Prolific completion redirect
+
+### Shared modules
+Practice and main task share the same underlying learning-phase and test-phase logic,
+implemented as reusable JS modules in `/experiment/components/`. They differ only in
+parameters (number of steps, number of questions, whether feedback is shown). Do not
+duplicate trial logic between components — parameterise it.
+
+---
+
+## Recruitment and Prolific Integration
+
+- Participants are recruited via **Prolific**
+- Prolific appends three URL parameters when a participant clicks the study link:
+  `PROLIFIC_PID`, `STUDY_ID`, `SESSION_ID` — capture all three at study start and
+  store them with the data
+- At the end of the debrief component, redirect to the Prolific **completion URL**
+  so participants are automatically credited
+- The completion URL is a configurable parameter (do not hardcode it)
+
+---
+
+## Group Assignment and Dropout Handling
+
+### Assignment strategy
+- Use the **JATOS Batch Session** for group assignment to ensure balanced group sizes
+  even with a small N (~40) and potential dropout
+- On study start, the consent component reads the current group counts from
+  `jatos.batchSession`, assigns the participant to the least-filled group, and
+  increments that group's counter atomically
+- Assigned group is then stored in `jatos.studySessionData` and read by all subsequent
+  components
+
+### Dropout
+- No special recovery for incomplete participants — they are excluded from analysis
+- JATOS records partial data automatically; incomplete runs are identifiable by absence
+  of the debrief component's result data
+
+---
+
+## Test Phase
+
+- Questions within each block are **randomised in order** at runtime (Fisher-Yates shuffle)
+- Option position (left/right on screen) is **randomised per trial** at runtime
+- Maximum response time is **3000 ms** (configurable via `testMaxResponseTime`)
+- If no response is given within the time limit, record as a timeout (`response: null,
+  rt: null, timed_out: true`) and advance automatically
+- Questions are drawn from the counterbalancing table filtered by participant group and
+  current block number
+
+---
+
+## Data Recording
+
+### Per learning phase step
+Record for every node shown during the random walk:
+
+| Field | Description |
+|-------|-------------|
+| `block` | Block number (1–4) |
+| `step` | Step index within the walk |
+| `node` | Node label shown (A–H) |
+| `cover_response` | Participant's symmetry judgement response |
+| `cover_rt` | Response time for cover task |
+
+The full walk sequence for each block is also stored as a flat array in
+`jatos.studySessionData` for use in later components if needed.
+
+### Per 2AFC trial
+| Field | Description |
+|-------|-------------|
+| `block` | Block number (1–4) |
+| `trial` | Trial index within block (1–9) |
+| `question_code` | Question identifier, e.g. `3F1` |
+| `category` | Category number (1–9) |
+| `comparison_pair_tag` | Full tag, e.g. `NB1WNB__NB2XB` |
+| `comparison_type` | T0, T1, or T2 |
+| `base_node` | Base node label |
+| `option_left` | Destination node shown on the left |
+| `option_right` | Destination node shown on the right |
+| `response` | `'left'` or `'right'`, or `null` if timed out |
+| `rt` | Response time in ms, or `null` if timed out |
+| `timed_out` | Boolean |
+| `group` | Counterbalancing group (1–4) |
+| `prolific_pid` | Prolific participant ID |
+
+---
+
+## Deployment Mode
+
+Currently building for **online deployment** only (Mindprobe/JATOS + Prolific).
+
+An in-person mode (run locally on the researcher's computer, no Prolific) may be
+added later. To keep that option open, isolate all Prolific-specific logic (URL
+parameter capture, completion redirect) in clearly labelled, self-contained functions
+rather than scattering it through component logic.
+
+---
+
+## Random Walk
+
+The learning phase sequence is generated client-side by a JS function. Spec:
+
+- Input: adjacency list (from config), number of steps (from config)
+- Output: array of node labels, e.g. `['A', 'C', 'B', 'E', ...]`
+- At each step, pick uniformly at random from the current node's neighbours
+- Starting node is chosen uniformly at random from all 8 nodes
+- The full sequence is recorded per participant (see Data Recording below)
+
+The adjacency list is fixed and small — hardcode it in the config file:
+```js
+adjacency: {
+  A: ['B', 'C', 'D'],  B: ['A', 'C', 'E'],
+  C: ['A', 'B', 'D'],  D: ['A', 'C', 'G'],
+  E: ['B', 'F', 'G'],  F: ['E', 'G', 'H'],
+  G: ['D', 'F', 'H'],  H: ['E', 'F', 'G']
+}
+```
+
+---
+
+## Timing and Trial Parameters
+
+All values live in the central config object — do not hardcode them in trial logic.
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| `stimulusDuration` | 2000 ms | Stimulus display including cover task response window |
+| `interStimulusInterval` | 200 ms | Blank screen between learning phase steps (no fixation cross) |
+| `walkLength` | 26 | Number of steps per learning phase block (main task) |
+| `practiceWalkLength` | TBD | Shorter walk for practice block — set as separate config var |
+| `testMaxResponseTime` | 3000 ms | Max time to respond in 2AFC; record timeout if no response |
+| `numBlocks` | 4 | Number of learning + test block pairs |
+| `questionsPerBlock` | 9 | One per comparison category |
+
+### Response inputs
+Response keys for both the cover task and the 2AFC are **configurable variables** —
+assign simple defaults for initial build and iterate during piloting. Do not hardcode
+key assignments anywhere other than the config object.
+
+### Fullscreen
+The experiment enforces fullscreen on start using the jsPsych fullscreen plugin.
+Participants must accept fullscreen to proceed.
+
+### What participants see
+- Participants **never see node labels** (A–H) or any internal tags — these are for
+  data recording only
+- During the learning phase, each node is represented by its **stimulus image**
+  (placeholder for now; final files will be `stimulus_A.png` etc.)
+- During the 2AFC test phase, the base node and two destination options are shown
+  as stimulus images only
+
+### Practice block
+Based on Kaper & Peters (2025, preprint), the practice phase uses **dedicated practice
+stimuli** (nodes I, J, K — entirely separate from the main experiment nodes A–H) with a
+**fully deterministic walk** (I→J→K→I→J→K...). This ensures zero contamination of
+learning in the main task.
+
+Practice structure:
+1. **Comprehension check (cover task)** — question verifying understanding of the
+   symmetry judgement (e.g. "what should you do when a shape appears on screen?");
+   two attempts allowed; correct answer revealed if both attempts fail; participant
+   may continue regardless
+2. **Untimed cover task practice** — short deterministic walk with practice stimuli;
+   feedback given after each trial on cover task correctness
+3. **Timed cover task practice** — same deterministic walk, timed (same `stimulusDuration`
+   as main task); auditory/visual feedback if no response within time limit
+4. **Comprehension check (2AFC)** — question verifying understanding of the forced
+   choice (e.g. "in each question, what are you being asked to judge?"); two attempts
+   allowed; if participant failed the cover task comprehension check AND fails this one
+   after two attempts, they are blocked from continuing; otherwise correct answer
+   revealed and they may continue
+5. **Untimed 2AFC practice** — a few practice 2AFC trials using the deterministic practice
+   stimuli; feedback given on correctness after each trial
+6. **Timed 2AFC practice** — same, but timed (same `testMaxResponseTime` as main task);
+   feedback given if answered in time
+
+Practice walk length and number of practice test trials are separate configurable variables.
+Practice trial data is **not saved**.
+
+The practice stimuli (I, J, K) need placeholder images like the main stimuli; name them
+`stimulus_I.png` etc. for consistency.
+
+---
+
+## Counterbalancing Table Loading
+
+- The counterbalancing table (`/data/counterbalancing_table.csv`) is **bundled with
+  the study files** and loaded at runtime via `fetch()` at the start of the main task
+  component
+- Do **not** regenerate the table in JavaScript — the CSV is the source of truth
+- Filter rows by the participant's assigned group (stored in `jatos.studySessionData`)
+  to get their specific 36-trial sequence
+- Parse with a lightweight CSV parser (e.g. PapaParse); do not write a custom parser
+
+---
+
+## Breaks Between Blocks
+Not included in the current build. Easy to add later as a self-paced screen between
+blocks — keep this in mind when structuring the block loop.
+
+---
+
+## Open Design Questions (resolve before building affected components)
+
+| Question | Affects |
+|----------|---------|
+| Response keys for cover task and 2AFC | Config, instructions |
