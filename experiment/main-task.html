@@ -26,7 +26,13 @@
       });
 
       const group = jatos.studySessionData[CONFIG.sessionKeys.group];
-      const table = await Utils.loadCounterbalancingTable();
+
+      // Load both CSVs in parallel, then build the question lookup.
+      const [table, candidates] = await Promise.all([
+        Utils.loadCounterbalancingTable(),
+        Utils.loadQuestionCandidates()
+      ]);
+      const lookup = Utils.buildQuestionLookup(candidates);
 
       const timeline = [
         { type: jsPsychFullscreen, fullscreen_mode: true }
@@ -36,7 +42,7 @@
         const walk   = Utils.generateRandomWalk(CONFIG.adjacency, CONFIG.nodes, CONFIG.walkLength);
         const trials = Utils.getTrialsForBlock(table, group, block);
 
-        // Store walk sequence in studySessionData for potential later use
+        // Store walk sequence in studySessionData for potential later use.
         const sequences = jatos.studySessionData[CONFIG.sessionKeys.walkSequences] || {};
         sequences[block] = walk;
         jatos.studySessionData[CONFIG.sessionKeys.walkSequences] = sequences;
@@ -46,11 +52,10 @@
         });
         timeline.push(...learningTrials);
 
-        // TODO: append test phase trials for this block
-        // const testTrials = TestPhase.createTimeline({
-        //   trials, jsPsych, block, giveFeedback: false, group
-        // });
-        // timeline.push(...testTrials);
+        const testTrials = TestPhase.createTimeline({
+          trials, jsPsych, block, timed: true, giveFeedback: false, group, lookup
+        });
+        timeline.push(...testTrials);
 
         // Note: breaks between blocks are not in the current build.
         // To add one, insert a self-paced screen here before continuing the loop.

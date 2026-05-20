@@ -497,6 +497,25 @@ blocks — keep this in mind when structuring the block loop.
 
 ---
 
+## Known Issues / Things to Verify
+
+### Category 6 candidate count — needs verification
+`counterbalancing.py` assigns `n_q = 4` to category 6 (`B2WB__B2XNB`), which means it
+generates question codes `6B1`–`6B4`, `6D1`–`6D4`, `6E1`–`6E4`, `6G1`–`6G4` and assigns
+them across groups and blocks. However, `2afc_question_candidates_v2.csv` appears to have
+only **2 candidate rows per boundary node** for this pair tag (pool of 8, not 16).
+
+If this is confirmed, codes `6X3` and `6X4` will have no matching row in the lookup, and
+those trials will be silently skipped in the JS (with a `console.warn`). Affected blocks
+would have 7 or 8 test trials instead of 9.
+
+**Action required:** check `planning/counterbalancing.py` (the `n_q` value for category 6)
+and `data/2afc_question_candidates_v2.csv` (count rows where `comparison_pair_tag == 'B2WB__B2XNB'`
+per base node). If the CSV is correct and `n_q` should be 2, regenerate the counterbalancing
+table and re-copy it to `experiment/data/counterbalancing_table.csv`.
+
+---
+
 ## Open Design Questions (resolve before building affected components)
 
 | Question | Affects |

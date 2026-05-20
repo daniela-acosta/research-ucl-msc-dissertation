@@ -85,6 +85,51 @@ const Utils = (function () {
       .map(row => ({ ...row, questionCode: row[groupKey] }));
   }
 
+  // Loads and parses the 2AFC question candidates CSV via PapaParse.
+  // Returns a Promise resolving to an array of row objects.
+  function loadQuestionCandidates() {
+    return new Promise((resolve, reject) => {
+      Papa.parse(CONFIG.questionCandidatesPath, {
+        download:      true,
+        header:        true,
+        dynamicTyping: true,
+        complete: (results) => resolve(results.data),
+        error:    (err)     => reject(err)
+      });
+    });
+  }
+
+  // Builds a lookup table mapping question codes (e.g. "3F1") to candidate rows.
+  // Processes candidates in CSV order; within each (base, pair_tag) group,
+  // assigns sequential question numbers starting at 1.
+  // NOTE: category 6 has n_q=4 in counterbalancing.py but only 2 candidates per node
+  // in the CSV — codes "6X3" and "6X4" will simply be absent from the returned map.
+  function buildQuestionLookup(candidates) {
+    const tagToCategory = {};
+    for (const [cat, tag] of Object.entries(CONFIG.categoryToPairTag)) {
+      tagToCategory[tag] = parseInt(cat, 10);
+    }
+
+    const groupCounts = {};
+    const lookup = {};
+
+    for (const row of candidates) {
+      const tag      = row.comparison_pair_tag;
+      const base     = row.base;
+      const category = tagToCategory[tag];
+      if (!category) {
+        console.warn('buildQuestionLookup: unknown pair tag', tag);
+        continue;
+      }
+      const groupKey = `${base}|${tag}`;
+      groupCounts[groupKey] = (groupCounts[groupKey] || 0) + 1;
+      const code = `${category}${base}${groupCounts[groupKey]}`;
+      lookup[code] = row;
+    }
+
+    return lookup;
+  }
+
   return {
     getStimulusPath,
     shuffleArray,
@@ -93,7 +138,9 @@ const Utils = (function () {
     getProlificParams,
     assignGroup,
     loadCounterbalancingTable,
-    getTrialsForBlock
+    getTrialsForBlock,
+    loadQuestionCandidates,
+    buildQuestionLookup
   };
 
 })();

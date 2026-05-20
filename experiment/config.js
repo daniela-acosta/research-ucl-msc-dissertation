@@ -43,9 +43,9 @@ const CONFIG = {
   // Placeholder practice 2AFC trials — replace once practice stimuli and questions are designed.
   // Each object: { base, optionTop, optionBottom, correctOption ('top'|'bottom') }
   practiceTwoAFCTrials: [
-    { base: 'I', optionTop: 'J', optionBottom: 'K', correctOption: 'top' },
-    { base: 'J', optionTop: 'K', optionBottom: 'I', correctOption: 'top' },
-    { base: 'K', optionTop: 'I', optionBottom: 'J', correctOption: 'top' }
+    { base: 'I', optionLeft: 'J', optionRight: 'K', correctOption: 'left' },
+    { base: 'J', optionLeft: 'K', optionRight: 'I', correctOption: 'left' },
+    { base: 'K', optionLeft: 'I', optionRight: 'J', correctOption: 'left' }
   ],
 
   // --- Timing (ms) ---
@@ -70,10 +70,10 @@ const CONFIG = {
     notSymmetricLabel: 'J — Not symmetric'
   },
   twoAFC: {
-    top:         'f',
-    bottom:      'j',
-    topLabel:    'F — Top',
-    bottomLabel: 'J — Bottom'
+    left:        'f',
+    right:       'j',
+    leftLabel:   'F — Left',
+    rightLabel:  'J — Right'
   },
 
   // --- Stimuli ---
@@ -81,8 +81,23 @@ const CONFIG = {
   stimulusDir:       'assets',
   stimulusExtension: '.png',
 
+  // --- 2AFC question lookup ---
+  // Maps category number → comparison_pair_tag string in the candidates CSV.
+  categoryToPairTag: {
+    1: 'NB1WB__NB2XB',
+    2: 'NB1WB__NB1WNB',
+    3: 'NB1WNB__NB2XB',
+    4: 'B1WNB__B2WB',
+    5: 'B1WNB__B2XNB',
+    6: 'B2WB__B2XNB',
+    7: 'B1XB__B2WB',
+    8: 'B1WNB__B1XB',
+    9: 'B1XB__B2XNB'
+  },
+
   // --- Data / counterbalancing ---
   counterbalancingTablePath: 'data/counterbalancing_table.csv',
+  questionCandidatesPath:    'data/2afc_question_candidates_v2.csv',
 
   // --- Prolific ---
   prolificCompletionURL: 'PLACEHOLDER_COMPLETION_URL',
