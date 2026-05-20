@@ -31,6 +31,15 @@ const CONFIG = {
     K: ['I']
   },
 
+  // Correct cover task response for each practice node.
+  // Placeholder values — update when real practice stimuli are defined.
+  // Must match the key values in coverTask.symmetric / coverTask.notSymmetric.
+  practiceCorrectAnswers: {
+    I: 'f', // symmetric
+    J: 'j', // not symmetric
+    K: 'f'  // symmetric
+  },
+
   // Placeholder practice 2AFC trials — replace once practice stimuli and questions are designed.
   // Each object: { base, optionTop, optionBottom, correctOption ('top'|'bottom') }
   practiceTwoAFCTrials: [
@@ -73,7 +82,7 @@ const CONFIG = {
   stimulusExtension: '.png',
 
   // --- Data / counterbalancing ---
-  counterbalancingTablePath: '../data/counterbalancing_table.csv',
+  counterbalancingTablePath: 'data/counterbalancing_table.csv',
 
   // --- Prolific ---
   prolificCompletionURL: 'PLACEHOLDER_COMPLETION_URL',

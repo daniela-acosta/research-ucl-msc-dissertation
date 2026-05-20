@@ -21,7 +21,7 @@
     jatos.onLoad(async function () {
       const jsPsych = initJsPsych({
         on_finish: function () {
-          jatos.startNextComponent();
+          jatos.submitResultData(jsPsych.data.get().json(), jatos.startNextComponent);
         }
       });
 
@@ -41,11 +41,10 @@
         sequences[block] = walk;
         jatos.studySessionData[CONFIG.sessionKeys.walkSequences] = sequences;
 
-        // TODO: append learning phase trials for this block
-        // const learningTrials = LearningPhase.createTimeline({
-        //   walk, jsPsych, block, giveFeedback: false
-        // });
-        // timeline.push(...learningTrials);
+        const learningTrials = LearningPhase.createTimeline({
+          walk, jsPsych, block, timed: true, giveFeedback: false
+        });
+        timeline.push(...learningTrials);
 
         // TODO: append test phase trials for this block
         // const testTrials = TestPhase.createTimeline({

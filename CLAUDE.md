@@ -477,10 +477,14 @@ The practice stimuli (I, J, K) need placeholder images like the main stimuli; na
 
 ## Counterbalancing Table Loading
 
-- The counterbalancing table (`/data/counterbalancing_table.csv`) is **bundled with
-  the study files** and loaded at runtime via `fetch()` at the start of the main task
-  component
+- The counterbalancing table is bundled inside the experiment directory at
+  `/experiment/data/counterbalancing_table.csv` and loaded at runtime via `fetch()`
+  at the start of the main task component
+- The canonical source is `/data/counterbalancing_table.csv` (project root). If that
+  file is ever regenerated, copy it into `/experiment/data/` as well
 - Do **not** regenerate the table in JavaScript — the CSV is the source of truth
+- JATOS can only serve files within the study's own directory — paths like `../data/`
+  will 404. All assets must be inside `/experiment/`
 - Filter rows by the participant's assigned group (stored in `jatos.studySessionData`)
   to get their specific 36-trial sequence
 - Parse with a lightweight CSV parser (e.g. PapaParse); do not write a custom parser
