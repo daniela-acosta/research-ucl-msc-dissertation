@@ -135,13 +135,33 @@ at runtime. This is not pre-counterbalanced — handle it dynamically in jsPsych
 ## Tech Stack
 
 - **Experiment platform:** JATOS (self-hosted or Mindprobe)
-- **Experiment library:** jsPsych (v7+)
+- **Experiment library:** jsPsych (v7.3.4)
 - **Language:** JavaScript / HTML / CSS
 - **Data pipeline:** Python (planning scripts, counterbalancing, graph definition)
 
 The experiment is built in `/experiment/`. Configuration should be centralised so that
 timing, stimuli, block counts, question counts, and counterbalancing group can all be
 changed from a single config file or object without touching trial logic.
+
+### jsPsych CDN pattern
+jsPsych is loaded via CDN (no bundler). Use **package name + version only** — no file path.
+unpkg resolves to the correct browser build automatically via the package's `unpkg` field.
+
+```html
+<!-- core -->
+<script src="https://unpkg.com/jspsych@7.3.4"></script>
+
+<!-- plugins — same pattern, no file path -->
+<script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+```
+
+**Do not append a file path** (not `/jspsych.js`, not `/dist/index.js`, not `/dist/index.browser.min.js`).
+Adding a path serves the wrong build and causes `jsPsychModule is not defined` / `initJsPsych is not defined` errors.
+
+The JATOS integration pattern (all three required in every component):
+1. `<script src="jatos.js"></script>` in `<head>`
+2. `on_finish: () => jatos.startNextComponent()` inside `initJsPsych({...})`
+3. `jsPsych.run(timeline)` called inside `jatos.onLoad(function() { ... })`
 
 ---
 
@@ -350,6 +370,25 @@ rather than scattering it through component logic.
 
 ---
 
+## Local Development
+
+Components are tested by opening HTML files directly in a browser — no JATOS server
+running. The setup that supports this:
+
+- Every HTML component includes `<script src="jatos.js"></script>` in its `<head>`.
+  On the JATOS server, JATOS intercepts requests for this path and serves its own
+  real implementation automatically. Locally, `/experiment/jatos.js` is a **mock**
+  that stubs the full JATOS API and logs all calls to the browser console.
+- `studySessionData` and `batchSession` are in-memory only in the mock — they reset
+  on page reload and do not persist across components when testing locally.
+- Group assignment via `assignGroup()` will always pick group 1 on a fresh load
+  (batch session starts empty). This is expected behaviour locally.
+- When deploying to JATOS, the mock `jatos.js` can be left in the bundle — JATOS
+  intercepts the request and serves its own version, ignoring the bundled file.
+  Verify this holds for your JATOS version before first deployment.
+
+---
+
 ## Random Walk
 
 The learning phase sequence is generated client-side by a JS function. Spec:
@@ -381,7 +420,7 @@ All values live in the central config object — do not hardcode them in trial l
 | `stimulusDuration` | 2000 ms | Stimulus display including cover task response window |
 | `interStimulusInterval` | 200 ms | Blank screen between learning phase steps (no fixation cross) |
 | `walkLength` | 26 | Number of steps per learning phase block (main task) |
-| `practiceWalkLength` | TBD | Shorter walk for practice block — set as separate config var |
+| `practiceWalkLength` | 26 | Same as main task for now; adjust in config to change |
 | `testMaxResponseTime` | 3000 ms | Max time to respond in 2AFC; record timeout if no response |
 | `numBlocks` | 4 | Number of learning + test block pairs |
 | `questionsPerBlock` | 9 | One per comparison category |

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Practice</title>
+  <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="jatos.js"></script>
+</head>
+<body>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script>
+  <script src="config.js"></script>
+  <script src="components/utils.js"></script>
+  <script src="components/learning-phase.js"></script>
+  <script src="components/test-phase.js"></script>
+
+  <script>
+    jatos.onLoad(function () {
+      const jsPsych = initJsPsych({
+        on_finish: function () {
+          jatos.startNextComponent();
+        }
+      });
+
+      // Practice uses nodes I, J, K with a deterministic walk.
+      // Practice data is NOT saved to JATOS result data.
+      //
+      // Sequence (Kaper & Peters 2025):
+      //   1. Cover task comprehension check  (2 attempts; reveal answer if both fail)
+      //   2. Untimed cover task practice     (giveFeedback: true)
+      //   3. Timed cover task practice       (giveFeedback: true, warn on timeout)
+      //   4. 2AFC comprehension check        (block if BOTH comprehension checks failed)
+      //   5. Untimed 2AFC practice           (giveFeedback: true)
+      //   6. Timed 2AFC practice             (giveFeedback: true)
+
+      const practiceWalk = Utils.generatePracticeWalk(CONFIG.practiceWalkLength);
+      let coverCheckPassed = false;
+
+      const timeline = [
+
+        // Enforce fullscreen
+        { type: jsPsychFullscreen, fullscreen_mode: true },
+
+        // TODO: Step 1 — cover task comprehension check
+        //   Show question about what to do when a shape appears.
+        //   Allow 2 attempts. If both fail, reveal correct answer but allow continuation.
+        //   Set coverCheckPassed = (response was correct within 2 attempts).
+
+        // TODO: Step 2 — untimed cover task learning phase
+        //   LearningPhase.createTimeline({
+        //     walk: practiceWalk, jsPsych, block: 0, giveFeedback: true
+        //   })
+        //   stimulusDuration should be null / Infinity (no time limit) for untimed phase.
+
+        // TODO: Step 3 — timed cover task learning phase
+        //   Same as step 2 but with CONFIG.stimulusDuration.
+        //   Add auditory or visual warning if no response was given within time.
+
+        // TODO: Step 4 — 2AFC comprehension check
+        //   Show question about what the forced-choice asks participants to judge.
+        //   Allow 2 attempts. If BOTH this check AND the cover check (step 1) failed,
+        //   call jatos.abortStudy() to block continuation; otherwise reveal answer.
+
+        // TODO: Step 5 — untimed 2AFC practice
+        //   TestPhase.createTimeline({
+        //     trials: CONFIG.practiceTwoAFCTrials, jsPsych, block: 0, giveFeedback: true, group: null
+        //   })
+        //   testMaxResponseTime should be null / Infinity for untimed phase.
+
+        // TODO: Step 6 — timed 2AFC practice
+        //   Same as step 5 but with CONFIG.testMaxResponseTime.
+
+      ];
+
+      jsPsych.run(timeline);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Main Task</title>
+  <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="jatos.js"></script>
+</head>
+<body>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="config.js"></script>
+  <script src="components/utils.js"></script>
+  <script src="components/learning-phase.js"></script>
+  <script src="components/test-phase.js"></script>
+
+  <script>
+    jatos.onLoad(async function () {
+      const jsPsych = initJsPsych({
+        on_finish: function () {
+          jatos.startNextComponent();
+        }
+      });
+
+      const group = jatos.studySessionData[CONFIG.sessionKeys.group];
+      const table = await Utils.loadCounterbalancingTable();
+
+      const timeline = [
+        { type: jsPsychFullscreen, fullscreen_mode: true }
+      ];
+
+      for (let block = 1; block <= CONFIG.numBlocks; block++) {
+        const walk   = Utils.generateRandomWalk(CONFIG.adjacency, CONFIG.nodes, CONFIG.walkLength);
+        const trials = Utils.getTrialsForBlock(table, group, block);
+
+        // Store walk sequence in studySessionData for potential later use
+        const sequences = jatos.studySessionData[CONFIG.sessionKeys.walkSequences] || {};
+        sequences[block] = walk;
+        jatos.studySessionData[CONFIG.sessionKeys.walkSequences] = sequences;
+
+        // TODO: append learning phase trials for this block
+        // const learningTrials = LearningPhase.createTimeline({
+        //   walk, jsPsych, block, giveFeedback: false
+        // });
+        // timeline.push(...learningTrials);
+
+        // TODO: append test phase trials for this block
+        // const testTrials = TestPhase.createTimeline({
+        //   trials, jsPsych, block, giveFeedback: false, group
+        // });
+        // timeline.push(...testTrials);
+
+        // Note: breaks between blocks are not in the current build.
+        // To add one, insert a self-paced screen here before continuing the loop.
+      }
+
+      jsPsych.run(timeline);
+    });
+  </script>
+</body>
+</html>

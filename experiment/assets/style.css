@@ -1,0 +1,105 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #1a1a1a;
+  color: #f0f0f0;
+  font-family: Arial, sans-serif;
+  font-size: 18px;
+}
+
+.jspsych-content {
+  max-width: 900px;
+  width: 100%;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+/* Stimulus */
+.stimulus-image {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+/* 2AFC top/bottom layout */
+.twoafc-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.twoafc-base {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+.twoafc-options {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.twoafc-option {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+/* Key prompts */
+.key-prompt {
+  font-size: 14px;
+  color: #aaa;
+  margin-top: 6px;
+}
+
+/* Feedback */
+.feedback-correct {
+  color: #2ECC71;
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.feedback-incorrect {
+  color: #E74C3C;
+  font-size: 26px;
+  font-weight: bold;
+}
+
+/* Text pages (consent, debrief, instructions) */
+.text-content {
+  text-align: left;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+.text-content h2 {
+  margin-bottom: 16px;
+}
+
+.text-content p {
+  margin-bottom: 12px;
+}
+
+/* Buttons */
+.jspsych-btn {
+  background-color: #3498DB;
+  color: white;
+  border: none;
+  padding: 12px 28px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 8px;
+}
+
+.jspsych-btn:hover {
+  background-color: #2980B9;
+}

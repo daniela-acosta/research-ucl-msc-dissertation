@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Instructions</title>
+  <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="jatos.js"></script>
+</head>
+<body>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-instructions@1.1.4"></script>
+  <script src="config.js"></script>
+
+  <script>
+    jatos.onLoad(function () {
+      const jsPsych = initJsPsych({
+        on_finish: function () {
+          jatos.startNextComponent();
+        }
+      });
+
+      // Instructions describe the cover task (symmetry judgement) ONLY.
+      // Do NOT mention the graph, communities, or transition structure.
+
+      const pages = [
+        `<div class="text-content">
+          <h2>Welcome</h2>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder welcome text.</p>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+             incididunt ut labore et dolore magna aliqua.</p>
+        </div>`,
+
+        `<div class="text-content">
+          <h2>Your Task</h2>
+          <p>Lorem ipsum placeholder — explain the symmetry judgement task here.</p>
+          <p>Each time an image appears on screen, judge whether it is <strong>symmetric</strong>.</p>
+          <p>Press <strong>${CONFIG.coverTask.symmetricLabel}</strong> if the image is symmetric.</p>
+          <p>Press <strong>${CONFIG.coverTask.notSymmetricLabel}</strong> if it is not symmetric.</p>
+          <p>Respond as quickly and accurately as you can.</p>
+        </div>`,
+
+        `<div class="text-content">
+          <h2>Test Questions</h2>
+          <p>Lorem ipsum placeholder — explain the 2AFC test questions here.</p>
+          <p>You will occasionally be shown two images and asked to judge which is more likely
+             to follow a third image.</p>
+          <p>Press <strong>${CONFIG.twoAFC.topLabel}</strong> for the top image.</p>
+          <p>Press <strong>${CONFIG.twoAFC.bottomLabel}</strong> for the bottom image.</p>
+          <p>You have ${CONFIG.testMaxResponseTime / 1000} seconds to respond.</p>
+        </div>`,
+
+        `<div class="text-content">
+          <h2>Ready?</h2>
+          <p>Lorem ipsum placeholder — final instructions before practice begins.</p>
+          <p>Click <strong>Next</strong> to start the practice block.</p>
+        </div>`
+      ];
+
+      const timeline = [
+        {
+          type: jsPsychInstructions,
+          pages: pages,
+          show_clickable_nav: true,
+          button_label_previous: 'Back',
+          button_label_next: 'Next'
+        }
+      ];
+
+      jsPsych.run(timeline);
+    });
+  </script>
+</body>
+</html>

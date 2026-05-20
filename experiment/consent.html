@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Consent</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css"
+    />
+    <link rel="stylesheet" href="assets/style.css" />
+    <script src="jatos.js"></script>
+  </head>
+  <body>
+    <script src="https://unpkg.com/jspsych@7.3.4"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
+    <script src="config.js"></script>
+    <script src="components/utils.js"></script>
+
+    <script>
+      jatos.onLoad(async function () {
+        const jsPsych = initJsPsych({
+          on_finish: function () {
+            jatos.startNextComponent();
+          },
+        });
+
+        // Capture Prolific URL params and store in studySessionData
+        const prolific = Utils.getProlificParams();
+        jatos.studySessionData[CONFIG.sessionKeys.prolificPID] = prolific.pid;
+        jatos.studySessionData[CONFIG.sessionKeys.studyID] = prolific.studyId;
+        jatos.studySessionData[CONFIG.sessionKeys.sessionID] =
+          prolific.sessionId;
+
+        // Assign counterbalancing group via JATOS Batch Session
+        const group = await Utils.assignGroup();
+        jatos.studySessionData[CONFIG.sessionKeys.group] = group;
+
+        const timeline = [
+          {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `
+            <div class="text-content">
+              <h2>Informed Consent</h2>
+              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder consent text.</p>
+              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+                 incididunt ut labore et dolore magna aliqua.</p>
+              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam,
+                 quis nostrud exercitation ullamco laboris.</p>
+              <p>By clicking <strong>I agree</strong> you confirm that you have read and understood
+                 the above information and consent to participate.</p>
+            </div>
+          `,
+            choices: ["I agree to participate", "I do not wish to participate"],
+            on_finish: function (data) {
+              if (data.response === 1) {
+                jatos.abortStudy("Participant declined consent.");
+              }
+            },
+          },
+        ];
+
+        jsPsych.run(timeline);
+      });
+    </script>
+  </body>
+</html>

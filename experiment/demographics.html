@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Demographics</title>
+  <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="jatos.js"></script>
+</head>
+<body>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.3"></script>
+  <script src="config.js"></script>
+
+  <script>
+    jatos.onLoad(function () {
+      const jsPsych = initJsPsych({
+        on_finish: function () {
+          jatos.startNextComponent();
+        }
+      });
+
+      const timeline = [
+        {
+          type: jsPsychSurveyHtmlForm,
+          preamble: `
+            <div class="text-content">
+              <h2>About You</h2>
+              <p>Lorem ipsum placeholder — final copy will be supplied. Please answer the
+                 following questions before starting the study.</p>
+            </div>
+          `,
+          html: `
+            <p>
+              <label>Age:
+                <input name="age" type="number" min="18" max="99" required>
+              </label>
+            </p>
+            <p>
+              <label>Gender:
+                <select name="gender" required>
+                  <option value="">-- select --</option>
+                  <option>Female</option>
+                  <option>Male</option>
+                  <option>Non-binary</option>
+                  <option>Prefer not to say</option>
+                  <option>Other</option>
+                </select>
+              </label>
+            </p>
+            <p>
+              <label>Handedness:
+                <select name="handedness" required>
+                  <option value="">-- select --</option>
+                  <option>Right</option>
+                  <option>Left</option>
+                  <option>Ambidextrous</option>
+                </select>
+              </label>
+            </p>
+            <p>
+              <label>Native language:
+                <input name="native_language" type="text" required>
+              </label>
+            </p>
+            <p>
+              <label>Do you have normal or corrected-to-normal vision?
+                <select name="vision" required>
+                  <option value="">-- select --</option>
+                  <option>Yes</option>
+                  <option>No</option>
+                </select>
+              </label>
+            </p>
+          `,
+          button_label: 'Continue',
+          on_finish: function (data) {
+            // TODO: save demographics to jatos.resultData
+          }
+        }
+      ];
+
+      jsPsych.run(timeline);
+    });
+  </script>
+</body>
+</html>

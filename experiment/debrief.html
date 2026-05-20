@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Debrief</title>
+  <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="jatos.js"></script>
+</head>
+<body>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
+  <script src="config.js"></script>
+
+  <script>
+    jatos.onLoad(function () {
+      const jsPsych = initJsPsych({
+        on_finish: function () {
+          // Record debrief completion, then redirect to Prolific
+          jatos.endStudyAndRedirect(CONFIG.prolificCompletionURL);
+        }
+      });
+
+      // Debrief reveals the true purpose of the study.
+      // Final copy will be supplied — lorem ipsum for now.
+
+      const timeline = [
+        {
+          type: jsPsychHtmlButtonResponse,
+          stimulus: `
+            <div class="text-content">
+              <h2>Debrief</h2>
+              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder debrief text
+                 revealing the true purpose of the study.</p>
+              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+                 incididunt ut labore et dolore magna aliqua.</p>
+              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam,
+                 quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+              <p>Thank you for your participation.</p>
+            </div>
+          `,
+          choices: ['Finish and claim reward']
+        }
+      ];
+
+      jsPsych.run(timeline);
+    });
+  </script>
+</body>
+</html>
