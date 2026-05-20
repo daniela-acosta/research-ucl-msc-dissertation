@@ -16,7 +16,15 @@
     jatos.onLoad(function () {
       const jsPsych = initJsPsych({
         on_finish: function () {
-          jatos.startNextComponent();
+          const formResponse = jsPsych.data.get().values()[0].response;
+          const record = {
+            ...formResponse,
+            prolific_pid: jatos.studySessionData[CONFIG.sessionKeys.prolificPID],
+            study_id:     jatos.studySessionData[CONFIG.sessionKeys.studyID],
+            session_id:   jatos.studySessionData[CONFIG.sessionKeys.sessionID],
+            group:        jatos.studySessionData[CONFIG.sessionKeys.group]
+          };
+          jatos.submitResultData(JSON.stringify(record), jatos.startNextComponent);
         }
       });
 
@@ -74,9 +82,7 @@
             </p>
           `,
           button_label: 'Continue',
-          on_finish: function (data) {
-            // TODO: save demographics to jatos.resultData
-          }
+          on_finish: function (data) {}
         }
       ];
 
