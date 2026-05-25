@@ -36,10 +36,10 @@ Community 2: E (boundary), F (NB), G (boundary), H (NB)
 
 **Adjacency (each node has exactly 3 neighbours):**
 ```
-A: B, C, D        E: B, F, G
+A: B, C, D        E: B, F, H
 B: A, C, E        F: E, G, H
 C: A, B, D        G: D, F, H
-D: A, C, G        H: E, F, G (wait — H: F, G, E... same thing)
+D: A, C, G        H: E, F, G
 ```
 
 The graph is defined programmatically in `/planning/graph_definition.py` using networkx.
@@ -77,14 +77,14 @@ Each question is identified as `[category][node][question_number]`, e.g. `1A2`.
 | # | Tag | Type | Pool | n/node | Base type | Description |
 |---|-----|------|------|--------|-----------|-------------|
 | 1 | NB1WB__NB2XB   | T1 | 16 | 4 | NB | Within-community boundary vs cross-community boundary (1 step vs 2 steps) |
-| 2 | NB1WB__NB1WNB  | T2 | 8  | 2 | NB | Within boundary vs within NB (both 1 step, both plausible) |
-| 3 | NB1WNB__NB2XB  | T1 | 8  | 2 | NB | Within NB vs cross-community boundary |
-| 4 | B1WNB__B2WB    | T1 | 8  | 2 | B  | Within NB vs within boundary (from boundary base) |
-| 5 | B1WNB__B2XNB   | T1 | 16 | 4 | B  | Within NB vs cross-community NB |
-| 6 | B2WB__B2XNB    | T0 | 8  | 2 | B  | Within boundary vs cross-community NB (both 2 steps, 0 plausible) |
+| 2 | NB1WNB__NB2XB  | T1 | 8  | 2 | NB | Within NB vs cross-community boundary |
+| 3 | NB1WB__NB1WNB  | T2 | 8  | 2 | NB | Within boundary vs within NB (both 1 step, both plausible) |
+| 4 | B2WB__B2XNB    | T0 | 8  | 2 | B  | Within boundary vs cross-community NB (both 2 steps, 0 plausible) |
+| 5 | B1WNB__B2WB    | T1 | 8  | 2 | B  | Within NB vs within boundary (from boundary base) |
+| 6 | B1WNB__B2XNB   | T1 | 16 | 4 | B  | Within NB vs cross-community NB |
 | 7 | B1XB__B2WB     | T1 | 4  | 1 | B  | Cross boundary vs within boundary |
-| 8 | B1WNB__B1XB    | T2 | 8  | 2 | B  | Within NB vs cross boundary (both 1 step) |
-| 9 | B1XB__B2XNB    | T1 | 8  | 2 | B  | Cross boundary vs cross-community NB |
+| 8 | B1XB__B2XNB    | T1 | 8  | 2 | B  | Cross boundary vs cross-community NB |
+| 9 | B1WNB__B1XB    | T2 | 8  | 2 | B  | Within NB vs cross boundary (both 1 step) |
 
 **Comparison type (T0/T1/T2):** number of plausible options in the pair (0, 1, or 2).
 T1 questions are the most informative for learning analysis; T0 and T2 are included
@@ -510,20 +510,14 @@ blocks — keep this in mind when structuring the block loop.
 
 ## Known Issues / Things to Verify
 
-### Category 6 candidate count — needs verification
-`counterbalancing.py` assigns `n_q = 4` to category 6 (`B2WB__B2XNB`), which means it
-generates question codes `6B1`–`6B4`, `6D1`–`6D4`, `6E1`–`6E4`, `6G1`–`6G4` and assigns
-them across groups and blocks. However, `2afc_question_candidates_v2.csv` appears to have
-only **2 candidate rows per boundary node** for this pair tag (pool of 8, not 16).
+### Category ordering — resolved
+An earlier version of `config.js` had `categoryToPairTag` in the wrong order (not matching
+`counterbalancing.py` or the design docs). This has been corrected by the researcher.
+The canonical ordering is now in `config.js` and matches the counterbalancing table.
 
-If this is confirmed, codes `6X3` and `6X4` will have no matching row in the lookup, and
-those trials will be silently skipped in the JS (with a `console.warn`). Affected blocks
-would have 7 or 8 test trials instead of 9.
-
-**Action required:** check `planning/counterbalancing.py` (the `n_q` value for category 6)
-and `data/2afc_question_candidates_v2.csv` (count rows where `comparison_pair_tag == 'B2WB__B2XNB'`
-per base node). If the CSV is correct and `n_q` should be 2, regenerate the counterbalancing
-table and re-copy it to `experiment/data/counterbalancing_table.csv`.
+The previously flagged "category 6 missing candidates" issue was a consequence of this wrong
+ordering — with the correct mapping, category 6 is `B1WNB__B2XNB` (pool 16, n_q=4), which
+does have 4 candidate rows per boundary node, so codes `6X3` and `6X4` exist and resolve correctly.
 
 ---
 

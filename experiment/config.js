@@ -16,7 +16,7 @@ const CONFIG = {
     B: ['A', 'C', 'E'],
     C: ['A', 'B', 'D'],
     D: ['A', 'C', 'G'],
-    E: ['B', 'F', 'G'],
+    E: ['B', 'F', 'H'],
     F: ['E', 'G', 'H'],
     G: ['D', 'F', 'H'],
     H: ['E', 'F', 'G']
@@ -56,10 +56,10 @@ const CONFIG = {
   // --- Block structure ---
   numBlocks:         4,
   questionsPerBlock: 9,
-  walkLength:        26,
+  walkLength:        5,
 
   // --- Practice ---
-  practiceWalkLength:        26,  // same as main task; adjust here to change
+  practiceWalkLength:        5,  // same as main task; adjust here to change
   practiceQuestionsPerBlock: 3,   // placeholder — update when practice questions are defined
 
   // --- Response keys ---
@@ -85,14 +85,14 @@ const CONFIG = {
   // Maps category number → comparison_pair_tag string in the candidates CSV.
   categoryToPairTag: {
     1: 'NB1WB__NB2XB',
-    2: 'NB1WB__NB1WNB',
-    3: 'NB1WNB__NB2XB',
-    4: 'B1WNB__B2WB',
-    5: 'B1WNB__B2XNB',
-    6: 'B2WB__B2XNB',
+    2: 'NB1WNB__NB2XB',
+    3: 'NB1WB__NB1WNB',
+    4: 'B2WB__B2XNB',
+    5: 'B1WNB__B2WB',
+    6: 'B1WNB__B2XNB',
     7: 'B1XB__B2WB',
-    8: 'B1WNB__B1XB',
-    9: 'B1XB__B2XNB'
+    8: 'B1XB__B2XNB',
+    9: 'B1WNB__B1XB',
   },
 
   // --- Data / counterbalancing ---
