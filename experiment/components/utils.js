@@ -3,8 +3,14 @@
 const Utils = (function () {
 
   // Returns the asset path for a given node label.
+  // Uses jatos.studyAssetsUrl when running on a JATOS server so that the absolute
+  // URL resolves correctly regardless of how JATOS maps component URLs.
+  // Falls back to a relative path for local browser testing (no JATOS server).
   function getStimulusPath(node) {
-    return `${CONFIG.stimulusDir}/stimulus_${node}${CONFIG.stimulusExtension}`;
+    const base = (typeof jatos !== 'undefined' && jatos.studyAssetsUrl)
+      ? jatos.studyAssetsUrl
+      : '.';
+    return `${base}/${CONFIG.stimulusDir}/stimulus_${node}${CONFIG.stimulusExtension}`;
   }
 
   // Fisher-Yates in-place shuffle. Returns the same array.
