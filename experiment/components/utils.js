@@ -102,8 +102,6 @@ const Utils = (function () {
   // Builds a lookup table mapping question codes (e.g. "3F1") to candidate rows.
   // Processes candidates in CSV order; within each (base, pair_tag) group,
   // assigns sequential question numbers starting at 1.
-  // NOTE: category 6 has n_q=4 in counterbalancing.py but only 2 candidates per node
-  // in the CSV — codes "6X3" and "6X4" will simply be absent from the returned map.
   function buildQuestionLookup(candidates) {
     const tagToCategory = {};
     for (const [cat, tag] of Object.entries(CONFIG.categoryToPairTag)) {
