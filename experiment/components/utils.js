@@ -67,9 +67,11 @@ const Utils = (function () {
   function loadCounterbalancingTable() {
     return new Promise((resolve, reject) => {
       Papa.parse(CONFIG.counterbalancingTablePath, {
-        download:       true,
-        header:         true,
-        dynamicTyping:  true,
+        download: true,
+        header:   true,
+        // Leave Group_N columns as strings — question codes like "2E1" would be
+        // misread as scientific notation (20) if dynamicTyping were applied to them.
+        dynamicTyping: (field) => !field.startsWith('Group_'),
         complete: (results) => resolve(results.data),
         error:    (err)     => reject(err)
       });
