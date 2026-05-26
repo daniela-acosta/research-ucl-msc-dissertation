@@ -200,6 +200,15 @@ for base in G.nodes:
         })
 
 questions_df = pd.DataFrame(q_rows)
-questions_df.to_csv("../data/2afc_question_candidates_v2.csv", index=False)
 
-print("Wrote: transition_criteria.csv and 2afc_question_candidates.csv")
+# Assign question_number: sequential index (1-based) within each (base, comparison_pair_tag) group.
+# Order is determined by itertools.combinations above, which is stable and deterministic.
+questions_df["question_number"] = (
+    questions_df
+    .groupby(["base", "comparison_pair_tag"], sort=False)
+    .cumcount() + 1
+)
+
+questions_df.to_csv("../data/2afc_question_candidates_v3.csv", index=False)
+
+print("Wrote: transition_criteria_v2.csv and 2afc_question_candidates_v3.csv")

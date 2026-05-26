@@ -97,7 +97,7 @@ const CONFIG = {
 
   // --- Data / counterbalancing ---
   counterbalancingTablePath: 'data/counterbalancing_table.csv',
-  questionCandidatesPath:    'data/2afc_question_candidates_v2.csv',
+  questionCandidatesPath:    'data/2afc_question_candidates_v3.csv',
 
   // --- Prolific ---
   prolificCompletionURL: 'PLACEHOLDER_COMPLETION_URL',

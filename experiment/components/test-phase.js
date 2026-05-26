@@ -29,7 +29,7 @@ const TestPhase = (function () {
       let baseNode, leftNode, rightNode, leftIsA,
           optionAPlausible, optionBPlausible,
           comparisonPairTag, comparisonType,
-          questionCode, category, correctPosition;
+          questionCode, category, correctPosition, candidate;
 
       if (isPractice) {
         // Practice trials already have optionLeft/optionRight/correctOption.
@@ -49,7 +49,7 @@ const TestPhase = (function () {
         // Main task: look up the candidate row and randomise left/right.
         questionCode = trialRow.questionCode;
         category     = trialRow.category;
-        const candidate = lookup[questionCode];
+        candidate = lookup[questionCode];
 
         if (!candidate) {
           console.warn('TestPhase: no candidate found for question code', questionCode,
@@ -100,6 +100,7 @@ const TestPhase = (function () {
           block:              block,
           trial_index_in_block: trialIndex,
           question_code:      questionCode,
+          question_number:    candidate ? candidate.question_number : null,
           category:           category,
           comparison_pair_tag: comparisonPairTag,
           comparison_type:    comparisonType,

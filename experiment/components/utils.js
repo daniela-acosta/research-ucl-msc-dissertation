@@ -102,28 +102,22 @@ const Utils = (function () {
   }
 
   // Builds a lookup table mapping question codes (e.g. "3F1") to candidate rows.
-  // Processes candidates in CSV order; within each (base, pair_tag) group,
-  // assigns sequential question numbers starting at 1.
+  // Relies on the question_number column in the candidates CSV (v3+).
   function buildQuestionLookup(candidates) {
     const tagToCategory = {};
     for (const [cat, tag] of Object.entries(CONFIG.categoryToPairTag)) {
       tagToCategory[tag] = parseInt(cat, 10);
     }
 
-    const groupCounts = {};
     const lookup = {};
 
     for (const row of candidates) {
-      const tag      = row.comparison_pair_tag;
-      const base     = row.base;
-      const category = tagToCategory[tag];
+      const category = tagToCategory[row.comparison_pair_tag];
       if (!category) {
-        console.warn('buildQuestionLookup: unknown pair tag', tag);
+        console.warn('buildQuestionLookup: unknown pair tag', row.comparison_pair_tag);
         continue;
       }
-      const groupKey = `${base}|${tag}`;
-      groupCounts[groupKey] = (groupCounts[groupKey] || 0) + 1;
-      const code = `${category}${base}${groupCounts[groupKey]}`;
+      const code = `${category}${row.base}${row.question_number}`;
       lookup[code] = row;
     }
 
