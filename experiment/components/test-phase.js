@@ -52,8 +52,7 @@ const TestPhase = (function () {
         candidate = lookup[questionCode];
 
         if (!candidate) {
-          console.warn('TestPhase: no candidate found for question code', questionCode,
-                       '— trial skipped. (Category 6 codes 3 & 4 are expected to be missing.)');
+          console.warn('TestPhase: no candidate found for question code', questionCode, '— trial skipped.');
           return;
         }
 

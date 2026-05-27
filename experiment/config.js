@@ -41,7 +41,7 @@ const CONFIG = {
   },
 
   // Placeholder practice 2AFC trials — replace once practice stimuli and questions are designed.
-  // Each object: { base, optionTop, optionBottom, correctOption ('top'|'bottom') }
+  // Each object: { base, optionLeft, optionRight, correctOption ('left'|'right') }
   practiceTwoAFCTrials: [
     { base: 'I', optionLeft: 'J', optionRight: 'K', correctOption: 'left' },
     { base: 'J', optionLeft: 'K', optionRight: 'I', correctOption: 'left' },

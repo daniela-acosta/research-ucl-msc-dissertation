@@ -240,6 +240,10 @@ screen region so layout can be validated without real assets.
 
 - Stimuli are loaded by node label (A–H); the naming convention for final image files
   will be `stimulus_A.png`, `stimulus_B.png`, etc. — build the loader to expect this
+- **Filenames must use lowercase `stimulus_`** — the code constructs paths as
+  `stimulus_A.png` (lowercase s). macOS is case-insensitive so any casing works
+  locally, but Mindprobe runs Linux which is case-sensitive — `Stimulus_A.png` causes
+  a silent 404 on the server only.
 - Do not hardcode stimuli inline; always load from a path defined in the config object
 
 ---
@@ -346,8 +350,9 @@ The full walk sequence for each block is also stored as a flat array in
 | Field | Description |
 |-------|-------------|
 | `block` | Block number (1–4) |
-| `trial` | Trial index within block (1–9) |
+| `trial_index_in_block` | 0-based trial index within the block |
 | `question_code` | Question identifier, e.g. `3F1` |
+| `question_number` | Sequential number within (base, category) group — the trailing digit of the code |
 | `category` | Category number (1–9) |
 | `comparison_pair_tag` | Full tag, e.g. `NB1WNB__NB2XB` |
 | `comparison_type` | T0, T1, or T2 |
@@ -362,7 +367,7 @@ The full walk sequence for each block is also stored as a flat array in
 | `rt` | Response time in ms, or `null` if timed out |
 | `timed_out` | Boolean |
 | `group` | Counterbalancing group (1–4) |
-| `prolific_pid` | Prolific participant ID |
+| `prolific_pid` | Prolific participant ID — **not yet recorded in trial data**; stored in `studySessionData` at consent and saved with demographics only |
 
 ---
 
@@ -393,6 +398,11 @@ running. The setup that supports this:
 - When deploying to JATOS, the mock `jatos.js` can be left in the bundle — JATOS
   intercepts the request and serves its own version, ignoring the bundled file.
   Verify this holds for your JATOS version before first deployment.
+- `Utils.getStimulusPath()` uses `jatos.studyAssetsUrl` (absolute URL) when running
+  on a JATOS server, and falls back to a relative path (`./assets/...`) locally.
+  This is necessary because Mindprobe's URL routing makes relative paths unreliable
+  for assets. Stimulus filenames must use lowercase `stimulus_` prefix and uppercase
+  node label (e.g. `stimulus_A.png`) — Linux is case-sensitive unlike macOS.
 
 ---
 
@@ -411,7 +421,7 @@ The adjacency list is fixed and small — hardcode it in the config file:
 adjacency: {
   A: ['B', 'C', 'D'],  B: ['A', 'C', 'E'],
   C: ['A', 'B', 'D'],  D: ['A', 'C', 'G'],
-  E: ['B', 'F', 'G'],  F: ['E', 'G', 'H'],
+  E: ['B', 'F', 'H'],  F: ['E', 'G', 'H'],
   G: ['D', 'F', 'H'],  H: ['E', 'F', 'G']
 }
 ```
