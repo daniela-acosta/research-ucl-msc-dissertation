@@ -144,6 +144,7 @@ const TestPhase = (function () {
         timeline.push({
           type:             jsPsychHtmlSliderResponse,
           stimulus:         '<p class="key-prompt">How confident are you in your response?</p>',
+          data: { trial_type_label: 'confidence' },
           min:              CONFIG.confidence.min,
           max:              CONFIG.confidence.max,
           start:            50,

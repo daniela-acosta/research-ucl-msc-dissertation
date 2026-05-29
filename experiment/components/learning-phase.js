@@ -96,6 +96,7 @@ const LearningPhase = (function () {
         stimulus: "",
         choices: "NO_KEYS",
         trial_duration: CONFIG.interStimulusInterval,
+        data: { trial_type_label: 'isi' }
       });
     });
 

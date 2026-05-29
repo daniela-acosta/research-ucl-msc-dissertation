@@ -371,6 +371,13 @@ The full walk sequence for each block is also stored as a flat array in
 | `group` | Counterbalancing group (1–4) |
 | `prolific_pid` | Prolific participant ID — **not yet recorded in trial data**; stored in `studySessionData` at consent and saved with demographics only |
 
+### Confidence trial rows
+Each 2AFC trial is followed by a separate confidence slider trial in the raw jsPsych data.
+These rows have `trial_type_label: 'confidence'` and contain `response` (slider value 0–100)
+and `rt`. The confidence values are also written back into the preceding 2AFC row as
+`confidence_response` and `confidence_rt`, so analysis can work from the 2AFC rows alone.
+Filter by `trial_type_label` to separate the three row types: `'learning'`, `'test'`, `'confidence'`.
+
 ---
 
 ## Deployment Mode
