@@ -62,6 +62,16 @@ const CONFIG = {
   practiceWalkLength:        5,  // same as main task; adjust here to change
   practiceQuestionsPerBlock: 3,   // placeholder — update when practice questions are defined
 
+  // --- Confidence judgement ---
+  // Shown after every 2AFC trial. Slider from min to max with a randomised start.
+  // require_movement forces participants to actively move the slider before submitting.
+  confidence: {
+    min:              0,
+    max:              100,
+    labels:           ['Totally guessing', 'Completely confident'],
+    requireMovement:  true
+  },
+
   // --- Response keys ---
   coverTask: {
     symmetric:         'f',

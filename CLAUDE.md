@@ -366,6 +366,8 @@ The full walk sequence for each block is also stored as a flat array in
 | `response` | Raw key pressed (`'f'` or `'j'`), or `null` if timed out |
 | `rt` | Response time in ms, or `null` if timed out |
 | `timed_out` | Boolean |
+| `confidence_response` | Slider value (0–100) from the confidence judgement; written back into the 2AFC row by the confidence trial's `on_finish` |
+| `confidence_rt` | Response time for the confidence judgement (ms) |
 | `group` | Counterbalancing group (1–4) |
 | `prolific_pid` | Prolific participant ID — **not yet recorded in trial data**; stored in `studySessionData` at consent and saved with demographics only |
 

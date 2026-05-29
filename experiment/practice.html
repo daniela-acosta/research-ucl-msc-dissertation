@@ -12,6 +12,7 @@
   <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
   <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-slider-response@1.1.3"></script>
   <script src="config.js"></script>
   <script src="components/utils.js"></script>
   <script src="components/learning-phase.js"></script>
@@ -167,13 +168,14 @@
 
       // ── Step 5: Untimed 2AFC practice ───────────────────────────────────────
       timeline.push(...TestPhase.createTimeline({
-        trials:       CONFIG.practiceTwoAFCTrials,
+        trials:            CONFIG.practiceTwoAFCTrials,
         jsPsych,
-        block:        0,
-        timed:        false,
-        giveFeedback: true,
-        group:        null,
-        lookup:       null
+        block:             0,
+        timed:             false,
+        giveFeedback:      true,
+        collectConfidence: true,
+        group:             null,
+        lookup:            null
       }));
 
       // ── Step 6: Timed 2AFC practice ─────────────────────────────────────────
@@ -188,13 +190,14 @@
         choices: ['Start']
       });
       timeline.push(...TestPhase.createTimeline({
-        trials:       CONFIG.practiceTwoAFCTrials,
+        trials:            CONFIG.practiceTwoAFCTrials,
         jsPsych,
-        block:        0,
-        timed:        true,
-        giveFeedback: true,
-        group:        null,
-        lookup:       null
+        block:             0,
+        timed:             true,
+        giveFeedback:      true,
+        collectConfidence: true,
+        group:             null,
+        lookup:            null
       }));
 
       jsPsych.run(timeline);

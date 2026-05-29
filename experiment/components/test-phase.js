@@ -18,7 +18,7 @@ const TestPhase = (function () {
    * @returns {object[]} Array of jsPsych timeline nodes.
    */
   function createTimeline(params) {
-    const { trials, jsPsych, block, timed, giveFeedback, group, lookup } = params;
+    const { trials, jsPsych, block, timed, giveFeedback, collectConfidence, group, lookup } = params;
     const isPractice = !lookup;
     const shuffled   = Utils.shuffleArray([...trials]);
     const timeline   = [];
@@ -139,15 +139,51 @@ const TestPhase = (function () {
         }
       });
 
+      // --- Confidence judgement ---
+      if (collectConfidence) {
+        timeline.push({
+          type:             jsPsychHtmlSliderResponse,
+          stimulus:         '<p class="key-prompt">How confident are you in your response?</p>',
+          min:              CONFIG.confidence.min,
+          max:              CONFIG.confidence.max,
+          start:            50,
+          step:             1,
+          labels:           CONFIG.confidence.labels,
+          require_movement: CONFIG.confidence.requireMovement,
+          on_start: function (trial) {
+            trial.start = Math.floor(Math.random() * (CONFIG.confidence.max - CONFIG.confidence.min + 1))
+                          + CONFIG.confidence.min;
+          },
+          on_finish: function (data) {
+            // Write confidence back into the preceding 2AFC trial's data row.
+            const twoAFCTrial = jsPsych.data
+              .get()
+              .filter({ trial_type_label: 'test' })
+              .last(1)
+              .values()[0];
+            if (twoAFCTrial) {
+              twoAFCTrial.confidence_response = data.response;
+              twoAFCTrial.confidence_rt       = data.rt;
+            }
+          }
+        });
+      }
+
       // --- Feedback (practice only) ---
       if (giveFeedback) {
         // Use a closure copy of correctPosition so the stimulus function can read it.
+        // Filter by trial_type_label so confidence trials between 2AFC and feedback
+        // don't shift the index.
         const expectedPosition = correctPosition;
         timeline.push({
           timeline: [{
             type: jsPsychHtmlKeyboardResponse,
             stimulus: function () {
-              const last = jsPsych.data.get().last(1).values()[0];
+              const last = jsPsych.data
+                .get()
+                .filter({ trial_type_label: 'test' })
+                .last(1)
+                .values()[0];
               if (last.timed_out) {
                 return '<p class="feedback-incorrect">Too slow! Please respond before time runs out.</p>';
               }
