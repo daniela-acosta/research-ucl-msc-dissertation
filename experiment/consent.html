@@ -39,24 +39,41 @@
           {
             type: jsPsychHtmlButtonResponse,
             stimulus: `
-            <div class="text-content">
-              <h2>Informed Consent</h2>
-              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder consent text.</p>
-              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-                 incididunt ut labore et dolore magna aliqua.</p>
-              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam,
-                 quis nostrud exercitation ullamco laboris.</p>
-              <p>By clicking <strong>I agree</strong> you confirm that you have read and understood
-                 the above information and consent to participate.</p>
-            </div>
-          `,
-            choices: ["I agree to participate", "I do not wish to participate"],
-            on_finish: function (data) {
-              if (data.response === 1) {
-                jatos.abortStudy("Participant declined consent.");
-              }
-            },
+              <div class="text-content">
+                <h2>Informed Consent</h2>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder consent text.</p>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+                   incididunt ut labore et dolore magna aliqua.</p>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam,
+                   quis nostrud exercitation ullamco laboris.</p>
+                <p>By clicking <strong>I agree</strong> you confirm that you have read and understood
+                   the above information and consent to participate.</p>
+              </div>`,
+            choices: ['I agree to participate', 'I do not wish to participate']
           },
+          // Shown only if participant declined (response === 1).
+          {
+            timeline: [{
+              type:     jsPsychHtmlButtonResponse,
+              stimulus: `
+                <div class="text-content">
+                  <p>Thank you for your time. You have chosen not to participate.</p>
+                  <p>Please <strong>return your submission on Prolific</strong> by clicking
+                     "Stop without completing" on the Prolific website.</p>
+                </div>`,
+              choices:  ['OK'],
+              on_finish: function () {
+                if (typeof jatos !== 'undefined') {
+                  jatos.abortStudy('Participant declined consent.');
+                }
+                jsPsych.endExperiment();
+              }
+            }],
+            conditional_function: function () {
+              const last = jsPsych.data.get().last(1).values()[0];
+              return last && last.response === 1;
+            }
+          }
         ];
 
         jsPsych.run(timeline);
