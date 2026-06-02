@@ -87,6 +87,8 @@
       }
 
       // ── Build timeline ──────────────────────────────────────────────────────
+      // Fullscreen and comprehension checks run once only — they sit outside the
+      // repeat loop so closure state doesn't need to reset between repeats.
       const timeline = [
         { type: jsPsychFullscreen, fullscreen_mode: true }
       ];
@@ -115,30 +117,7 @@
       });
       timeline.push(...coverCheck.nodes);
 
-      // ── Step 2: Untimed cover task practice ─────────────────────────────────
-      timeline.push(...LearningPhase.createTimeline({
-        walk: practiceWalk, jsPsych, block: 0, timed: false, giveFeedback: true
-      }));
-
-      // ── Step 3: Timed cover task practice ───────────────────────────────────
-      timeline.push({
-        type:     jsPsychHtmlButtonResponse,
-        stimulus: `
-          <div class="text-content">
-            <h2>Now with a time limit</h2>
-            <p>Good work! This time the images will disappear after
-               ${CONFIG.stimulusDuration / 1000} seconds — just like in the real task.</p>
-            <p>Try to respond before each image disappears.</p>
-            <p>Only your <strong>first keypress</strong> is recorded —
-               pressing a second key will not change your response.</p>
-          </div>`,
-        choices: ['Start']
-      });
-      timeline.push(...LearningPhase.createTimeline({
-        walk: practiceWalk, jsPsych, block: 0, timed: true, giveFeedback: true
-      }));
-
-      // ── Step 4: 2AFC comprehension check ────────────────────────────────────
+      // ── Step 2: 2AFC comprehension check ────────────────────────────────────
       const twoAFCCheck = buildCheck({
         questionHtml: `
           <div class="text-content">
@@ -168,40 +147,89 @@
       });
       timeline.push(...twoAFCCheck.nodes);
 
-      // ── Step 5: Untimed 2AFC practice ───────────────────────────────────────
-      timeline.push(...TestPhase.createTimeline({
-        trials:            CONFIG.practiceTwoAFCTrials,
-        jsPsych,
-        block:             0,
-        timed:             false,
-        giveFeedback:      true,
-        collectConfidence: true,
-        group:             null,
-        lookup:            null
-      }));
+      // ── Practice loop ────────────────────────────────────────────────────────
+      // Steps 3–7 repeat if the participant chooses "Repeat practice".
+      // Comprehension checks are excluded so their closure state doesn't need to reset.
+      const practiceLoop = {
+        timeline: [
 
-      // ── Step 6: Timed 2AFC practice ─────────────────────────────────────────
-      timeline.push({
-        type:     jsPsychHtmlButtonResponse,
-        stimulus: `
-          <div class="text-content">
-            <h2>Now with a time limit</h2>
-            <p>This time you will have ${CONFIG.testMaxResponseTime / 1000} seconds to respond
-               on each question — the same as in the real task.</p>
-          </div>`,
-        choices: ['Start']
-      });
-      timeline.push(...TestPhase.createTimeline({
-        trials:            CONFIG.practiceTwoAFCTrials,
-        jsPsych,
-        block:             0,
-        timed:             true,
-        giveFeedback:      true,
-        collectConfidence: true,
-        group:             null,
-        lookup:            null
-      }));
+          // ── Step 3: Untimed cover task practice ───────────────────────────
+          ...LearningPhase.createTimeline({
+            walk: practiceWalk, jsPsych, block: 0, timed: false, giveFeedback: true
+          }),
 
+          // ── Step 4: Timed cover task practice ─────────────────────────────
+          {
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: `
+              <div class="text-content">
+                <h2>Now with a time limit</h2>
+                <p>Good work! This time the images will disappear after
+                   ${CONFIG.stimulusDuration / 1000} seconds — just like in the real task.</p>
+                <p>Try to respond before each image disappears.</p>
+                <p>Only your <strong>first keypress</strong> is recorded —
+                   pressing a second key will not change your response.</p>
+              </div>`,
+            choices: ['Start']
+          },
+          ...LearningPhase.createTimeline({
+            walk: practiceWalk, jsPsych, block: 0, timed: true, giveFeedback: true
+          }),
+
+          // ── Step 5: Untimed 2AFC practice ─────────────────────────────────
+          ...TestPhase.createTimeline({
+            trials:            CONFIG.practiceTwoAFCTrials,
+            jsPsych,
+            block:             0,
+            timed:             false,
+            giveFeedback:      true,
+            collectConfidence: true,
+            group:             null,
+            lookup:            null
+          }),
+
+          // ── Step 6: Timed 2AFC practice ───────────────────────────────────
+          {
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: `
+              <div class="text-content">
+                <h2>Now with a time limit</h2>
+                <p>This time you will have ${CONFIG.testMaxResponseTime / 1000} seconds to respond
+                   on each question — the same as in the real task.</p>
+              </div>`,
+            choices: ['Start']
+          },
+          ...TestPhase.createTimeline({
+            trials:            CONFIG.practiceTwoAFCTrials,
+            jsPsych,
+            block:             0,
+            timed:             true,
+            giveFeedback:      true,
+            collectConfidence: true,
+            group:             null,
+            lookup:            null
+          }),
+
+          // ── Step 7: Repeat or proceed ─────────────────────────────────────
+          {
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: `
+              <div class="text-content">
+                <h2>Practice complete</h2>
+                <p>Would you like to repeat the practice, or are you ready to start the main task?</p>
+              </div>`,
+            choices: ['Repeat practice', 'Start main task']
+          }
+
+        ],
+        loop_function: function () {
+          // Repeat if the participant clicked "Repeat practice" (response index 0).
+          const last = jsPsych.data.get().last(1).values()[0];
+          return last && last.response === 0;
+        }
+      };
+
+      timeline.push(practiceLoop);
       jsPsych.run(timeline);
     });
   </script>
