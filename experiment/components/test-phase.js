@@ -176,6 +176,7 @@ const TestPhase = (function () {
           step:             1,
           labels:           CONFIG.confidence.labels,
           require_movement: CONFIG.confidence.requireMovement,
+          trial_duration:   CONFIG.confidence.maxResponseTime,
           on_start: function (trial) {
             trial.start = Math.floor(Math.random() * (CONFIG.confidence.max - CONFIG.confidence.min + 1))
                           + CONFIG.confidence.min;
@@ -188,9 +189,30 @@ const TestPhase = (function () {
               .last(1)
               .values()[0];
             if (twoAFCTrial) {
-              twoAFCTrial.confidence_response = data.response;
-              twoAFCTrial.confidence_rt       = data.rt;
+              twoAFCTrial.confidence_response  = data.response;
+              twoAFCTrial.confidence_rt        = data.rt;
+              twoAFCTrial.confidence_timed_out = data.response === null;
             }
+          }
+        });
+      }
+
+      // --- Confidence timeout warning (practice only) ---
+      if (collectConfidence && giveFeedback) {
+        timeline.push({
+          timeline: [{
+            type:           jsPsychHtmlKeyboardResponse,
+            stimulus:       '<p class="feedback-incorrect">Too slow! Please rate your confidence before time runs out.</p>',
+            choices:        'NO_KEYS',
+            trial_duration: 800
+          }],
+          conditional_function: function () {
+            const last = jsPsych.data
+              .get()
+              .filter({ trial_type_label: 'confidence' })
+              .last(1)
+              .values()[0];
+            return last && last.response === null;
           }
         });
       }

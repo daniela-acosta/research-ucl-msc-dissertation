@@ -417,17 +417,28 @@ The full walk sequence for each block is also stored as a flat array in
 | `response` | Raw key pressed (`'f'` or `'j'`), or `null` if timed out |
 | `rt` | Response time in ms, or `null` if timed out |
 | `timed_out` | Boolean |
-| `confidence_response` | Slider value (0–100) from the confidence judgement; written back into the 2AFC row by the confidence trial's `on_finish` |
-| `confidence_rt` | Response time for the confidence judgement (ms) |
+| `confidence_response` | Slider value (0–100) from the confidence judgement; `null` if timed out; written back into the 2AFC row by the confidence trial's `on_finish` |
+| `confidence_rt` | Response time for the confidence judgement (ms); `null` if timed out |
+| `confidence_timed_out` | Boolean — whether the confidence trial exceeded `CONFIG.confidence.maxResponseTime` |
 | `group` | Counterbalancing group (1–4) |
 | `prolific_pid` | Prolific participant ID — **not yet recorded in trial data**; stored in `studySessionData` at consent and saved with demographics only |
 
 ### Confidence trial rows
 Each 2AFC trial is followed by a separate confidence slider trial in the raw jsPsych data.
-These rows have `trial_type_label: 'confidence'` and contain `response` (slider value 0–100)
-and `rt`. The confidence values are also written back into the preceding 2AFC row as
-`confidence_response` and `confidence_rt`, so analysis can work from the 2AFC rows alone.
-Filter by `trial_type_label` to separate the three row types: `'learning'`, `'test'`, `'confidence'`.
+These rows have `trial_type_label: 'confidence'` and contain `response` (slider value 0–100,
+or `null` if timed out) and `rt`. The time limit is `CONFIG.confidence.maxResponseTime`
+(default 5000 ms); set to `null` to remove the limit.
+
+The confidence values are also written back into the preceding 2AFC row as
+`confidence_response`, `confidence_rt`, and `confidence_timed_out`, so analysis can work
+from the 2AFC rows alone.
+
+In practice (`giveFeedback: true`), a 800 ms warning ("Too slow! Please rate your
+confidence before time runs out.") appears immediately after a timed-out confidence trial,
+before the 2AFC correct/incorrect feedback.
+
+Filter by `trial_type_label` to separate the four row types: `'learning'`, `'isi'`,
+`'test'`, `'confidence'`.
 
 ---
 

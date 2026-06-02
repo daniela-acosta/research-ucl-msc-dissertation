@@ -66,10 +66,11 @@ const CONFIG = {
   // Shown after every 2AFC trial. Slider from min to max with a randomised start.
   // require_movement forces participants to actively move the slider before submitting.
   confidence: {
-    min:              0,
-    max:              100,
-    labels:           ['Totally guessing', 'Completely confident'],
-    requireMovement:  true
+    min:             0,
+    max:             100,
+    labels:          ['Totally guessing', 'Completely confident'],
+    requireMovement: true,
+    maxResponseTime: 5000
   },
 
   // --- Response keys ---
