@@ -70,6 +70,17 @@
           loop_function: function () { return !_passed && attempts < 2; }
         };
 
+        // Brief "Correct!" confirmation shown when the participant answers correctly.
+        const correctFeedback = {
+          timeline: [{
+            type:           jsPsychHtmlKeyboardResponse,
+            stimulus:       '<p class="feedback-correct">Correct!</p>',
+            choices:        'NO_KEYS',
+            trial_duration: 800
+          }],
+          conditional_function: function () { return _passed; }
+        };
+
         // Reveal the correct answer only if both attempts failed.
         const revealNode = {
           timeline: [{
@@ -81,7 +92,7 @@
         };
 
         return {
-          nodes:  [loopNode, revealNode],
+          nodes:  [loopNode, correctFeedback, revealNode],
           passed: function () { return _passed; }
         };
       }
