@@ -2,3 +2,4 @@ node_modules/
 .DS_Storevenv/
 venv/
 count-lines.sh
+data/results/
