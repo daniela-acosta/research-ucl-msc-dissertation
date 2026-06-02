@@ -78,16 +78,18 @@ const TestPhase = (function () {
           '<div class="twoafc-options">' +
             '<div class="twoafc-option">' +
               '<img src="' + Utils.getStimulusPath(leftNode) + '" class="stimulus-image" alt="left option">' +
-              '<p class="key-prompt"><strong>' + CONFIG.twoAFC.leftLabel + '</strong></p>' +
+              '<p class="key-prompt"><strong id="twoafc-label-left">'  + CONFIG.twoAFC.leftLabel  + '</strong></p>' +
             '</div>' +
             '<div class="twoafc-option">' +
               '<img src="' + Utils.getStimulusPath(rightNode) + '" class="stimulus-image" alt="right option">' +
-              '<p class="key-prompt"><strong>' + CONFIG.twoAFC.rightLabel + '</strong></p>' +
+              '<p class="key-prompt"><strong id="twoafc-label-right">' + CONFIG.twoAFC.rightLabel + '</strong></p>' +
             '</div>' +
           '</div>' +
         '</div>';
 
       // --- 2AFC trial ---
+      let _keyHandler = null;
+
       timeline.push({
         type:               jsPsychHtmlKeyboardResponse,
         stimulus:           stimulusHtml,
@@ -112,7 +114,29 @@ const TestPhase = (function () {
           correct_position_practice: correctPosition,
           group:              group
         },
+        on_load: function () {
+          // Capture phase fires before jsPsych's bubble-phase listener, ensuring
+          // the tone and highlight land before the trial advances.
+          _keyHandler = function (e) {
+            if (e.key === CONFIG.twoAFC.left || e.key === CONFIG.twoAFC.right) {
+              Utils.playKeyTone();
+              const pressedId = e.key === CONFIG.twoAFC.left ? 'twoafc-label-left' : 'twoafc-label-right';
+              const otherId   = e.key === CONFIG.twoAFC.left ? 'twoafc-label-right' : 'twoafc-label-left';
+              const pressed   = document.getElementById(pressedId);
+              const other     = document.getElementById(otherId);
+              if (pressed) pressed.style.color = '#27ae60';
+              if (other)   other.style.color   = '#aaaaaa';
+              document.removeEventListener('keydown', _keyHandler, true);
+              _keyHandler = null;
+            }
+          };
+          document.addEventListener('keydown', _keyHandler, true);
+        },
         on_finish: function (data) {
+          if (_keyHandler) {
+            document.removeEventListener('keydown', _keyHandler, true);
+            _keyHandler = null;
+          }
           if (data.response === CONFIG.twoAFC.left) {
             data.chosen_position = 'left';
             data.chosen_node     = data.option_left;
@@ -127,6 +151,7 @@ const TestPhase = (function () {
             data.chose_option_a  = null;
           }
           data.timed_out = data.response === null;
+          if (data.timed_out) Utils.playTimeoutTone();
 
           // Plausibility of the chosen option (main task only)
           if (data.chose_option_a !== null && data.left_is_option_a !== null) {

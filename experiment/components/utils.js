@@ -130,6 +130,54 @@ const Utils = (function () {
     return lookup;
   }
 
+  // ---------- Audio feedback ----------
+  // Single AudioContext shared across all phases (created on first use).
+  let _audioCtx = null;
+
+  function _getAudioCtx() {
+    if (!_audioCtx) {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return _audioCtx;
+  }
+
+  // Short, soft confirmation tone (660 Hz sine, 50 ms).
+  function playKeyTone() {
+    try {
+      const ctx = _getAudioCtx();
+      ctx.resume();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type            = 'sine';
+      osc.frequency.value = 660;
+      gain.gain.setValueAtTime(0.07, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.05);
+    } catch (e) {}
+  }
+
+  // Descending tone played on timeout (440 → 200 Hz over 200 ms).
+  function playTimeoutTone() {
+    try {
+      const ctx = _getAudioCtx();
+      ctx.resume();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.07, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.2);
+    } catch (e) {}
+  }
+
   return {
     getStimulusPath,
     shuffleArray,
@@ -140,7 +188,9 @@ const Utils = (function () {
     loadCounterbalancingTable,
     getTrialsForBlock,
     loadQuestionCandidates,
-    buildQuestionLookup
+    buildQuestionLookup,
+    playKeyTone,
+    playTimeoutTone
   };
 
 })();

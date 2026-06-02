@@ -2,28 +2,6 @@
 
 const LearningPhase = (function () {
 
-  // Single AudioContext reused across all trials (created on first keypress).
-  let _audioCtx = null;
-
-  function _playKeyTone() {
-    try {
-      if (!_audioCtx) {
-        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      _audioCtx.resume();
-      const osc  = _audioCtx.createOscillator();
-      const gain = _audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(_audioCtx.destination);
-      osc.type            = 'sine';
-      osc.frequency.value = 660;
-      gain.gain.setValueAtTime(0.07, _audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.05);
-      osc.start(_audioCtx.currentTime);
-      osc.stop(_audioCtx.currentTime + 0.05);
-    } catch (e) {}
-  }
-
   /**
    * Build jsPsych timeline nodes for one learning-phase block.
    *
@@ -69,7 +47,7 @@ const LearningPhase = (function () {
         on_load: function () {
           _keyHandler = function (e) {
             if (e.key === CONFIG.coverTask.symmetric || e.key === CONFIG.coverTask.notSymmetric) {
-              _playKeyTone();
+              Utils.playKeyTone();
               // Highlight the pressed label; dim the other
               const pressedId = e.key === CONFIG.coverTask.symmetric ? 'cover-label-sym' : 'cover-label-notsym';
               const otherId   = e.key === CONFIG.coverTask.symmetric ? 'cover-label-notsym' : 'cover-label-sym';
