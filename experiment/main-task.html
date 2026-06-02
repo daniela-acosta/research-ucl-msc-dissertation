@@ -50,13 +50,13 @@
         jatos.studySessionData[CONFIG.sessionKeys.walkSequences] = sequences;
 
         const learningTrials = LearningPhase.createTimeline({
-          walk, jsPsych, block, timed: true, giveFeedback: false
+          walk, jsPsych, block, timed: true, giveFeedback: false, checkExclusion: true
         });
         timeline.push(...learningTrials);
 
         const testTrials = TestPhase.createTimeline({
           trials, jsPsych, block, timed: true, giveFeedback: false,
-          collectConfidence: true, group, lookup
+          collectConfidence: true, checkExclusion: true, group, lookup
         });
         timeline.push(...testTrials);
 

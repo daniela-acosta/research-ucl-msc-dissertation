@@ -17,7 +17,7 @@ const LearningPhase = (function () {
    * @returns {object[]} Array of jsPsych timeline nodes.
    */
   function createTimeline(params) {
-    const { walk, jsPsych, block, timed, giveFeedback } = params;
+    const { walk, jsPsych, block, timed, giveFeedback, checkExclusion = false } = params;
     const timeline = [];
 
     walk.forEach(function (node, stepIndex) {
@@ -109,6 +109,27 @@ const LearningPhase = (function () {
         trial_duration: CONFIG.interStimulusInterval,
         data:           { trial_type_label: 'isi' }
       });
+
+      // 4. Exclusion check (main task only)
+      if (checkExclusion) {
+        const _block = block;
+        timeline.push({
+          timeline: [{
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: '<div class="text-content"><p>The study has ended because too many responses were missed.</p><p>Please <strong>return your submission on Prolific</strong> by clicking "Stop without completing" on the Prolific website.</p><p>If you have any questions, please contact the researcher.</p></div>',
+            choices:  ['OK'],
+            on_finish: function () {
+              if (typeof jatos !== 'undefined') {
+                jatos.abortStudy('Excluded: missed too many learning-phase responses.');
+              }
+              jsPsych.endExperiment();
+            }
+          }],
+          conditional_function: function () {
+            return Utils.shouldExclude(jsPsych, 'learning', _block);
+          }
+        });
+      }
     });
 
     return timeline;

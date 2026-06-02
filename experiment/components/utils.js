@@ -130,6 +130,51 @@ const Utils = (function () {
     return lookup;
   }
 
+  // ---------- Exclusion checks ----------
+  // Returns true if the participant should be excluded based on their miss pattern
+  // for the given phase. Checks consecutive misses across all blocks and miss rate
+  // within the current block. Either check can be disabled by setting it to null
+  // in CONFIG.exclusion. Pass checkExclusion: true from main-task only — not practice.
+  function shouldExclude(jsPsych, trialTypeLabel, block) {
+    const cfg = trialTypeLabel === 'learning'
+      ? CONFIG.exclusion.learning
+      : CONFIG.exclusion.test;
+    if (!cfg) return false;
+
+    const trials = jsPsych.data
+      .get()
+      .filter({ trial_type_label: trialTypeLabel })
+      .values();
+
+    // Consecutive miss check (most recent trials first).
+    if (cfg.maxConsecutiveMisses !== null) {
+      let streak = 0;
+      for (let i = trials.length - 1; i >= 0; i--) {
+        if (trials[i].response === null) {
+          streak++;
+          if (streak >= cfg.maxConsecutiveMisses) return true;
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Miss rate within the current block — only evaluated once the full block is
+    // complete, so a single early miss doesn't produce a misleading 100% rate.
+    if (cfg.maxMissRatePerBlock !== null) {
+      const expectedCount = trialTypeLabel === 'learning'
+        ? CONFIG.walkLength
+        : CONFIG.questionsPerBlock;
+      const blockTrials = trials.filter(t => t.block === block);
+      if (blockTrials.length >= expectedCount) {
+        const rate = blockTrials.filter(t => t.response === null).length / blockTrials.length;
+        if (rate > cfg.maxMissRatePerBlock) return true;
+      }
+    }
+
+    return false;
+  }
+
   // ---------- Audio feedback ----------
   // Single AudioContext shared across all phases (created on first use).
   let _audioCtx = null;
@@ -190,7 +235,8 @@ const Utils = (function () {
     loadQuestionCandidates,
     buildQuestionLookup,
     playKeyTone,
-    playTimeoutTone
+    playTimeoutTone,
+    shouldExclude
   };
 
 })();

@@ -18,7 +18,7 @@ const TestPhase = (function () {
    * @returns {object[]} Array of jsPsych timeline nodes.
    */
   function createTimeline(params) {
-    const { trials, jsPsych, block, timed, giveFeedback, collectConfidence, group, lookup } = params;
+    const { trials, jsPsych, block, timed, giveFeedback, collectConfidence, checkExclusion = false, group, lookup } = params;
     const isPractice = !lookup;
     const shuffled   = Utils.shuffleArray([...trials]);
     const timeline   = [];
@@ -191,6 +191,27 @@ const TestPhase = (function () {
               twoAFCTrial.confidence_response = data.response;
               twoAFCTrial.confidence_rt       = data.rt;
             }
+          }
+        });
+      }
+
+      // --- Exclusion check (main task only) ---
+      if (checkExclusion) {
+        const _block = block;
+        timeline.push({
+          timeline: [{
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: '<div class="text-content"><p>The study has ended because too many responses were missed.</p><p>Please <strong>return your submission on Prolific</strong> by clicking "Stop without completing" on the Prolific website.</p><p>If you have any questions, please contact the researcher.</p></div>',
+            choices:  ['OK'],
+            on_finish: function () {
+              if (typeof jatos !== 'undefined') {
+                jatos.abortStudy('Excluded: missed too many test-phase responses.');
+              }
+              jsPsych.endExperiment();
+            }
+          }],
+          conditional_function: function () {
+            return Utils.shouldExclude(jsPsych, 'test', _block);
           }
         });
       }

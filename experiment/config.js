@@ -112,6 +112,22 @@ const CONFIG = {
   // --- Prolific ---
   prolificCompletionURL: 'PLACEHOLDER_COMPLETION_URL',
 
+  // --- Exclusion criteria ---
+  // Participants are excluded (study aborted) if either criterion is met during the
+  // main task. Set a value to null to disable that check for the relevant phase.
+  // maxConsecutiveMisses: N unanswered trials in a row (checked after every trial).
+  // maxMissRatePerBlock:  proportion of missed trials in the current block (0–1).
+  exclusion: {
+    learning: {
+      maxConsecutiveMisses: 3,
+      maxMissRatePerBlock:  0.5
+    },
+    test: {
+      maxConsecutiveMisses: 3,
+      maxMissRatePerBlock:  0.5
+    }
+  },
+
   // --- JATOS studySessionData keys ---
   sessionKeys: {
     group:         'group',

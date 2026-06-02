@@ -330,6 +330,57 @@ duplicate trial logic between components — parameterise it.
 
 ---
 
+## Exclusion Criteria
+
+Participants are excluded mid-experiment if their miss pattern in either phase exceeds
+the configured thresholds. Practice is never checked.
+
+### Rules (configured in `CONFIG.exclusion`)
+
+| Phase    | Rule                    | Default | Checked when | Description |
+|----------|-------------------------|---------|--------------|-------------|
+| Learning | `maxConsecutiveMisses`  | 3       | After every trial | N unanswered trials in a row |
+| Learning | `maxMissRatePerBlock`   | 0.5     | End of block only | >50 % of trials missed in the completed block |
+| Test     | `maxConsecutiveMisses`  | 3       | After every trial | N unanswered trials in a row |
+| Test     | `maxMissRatePerBlock`   | 0.5     | End of block only | >50 % of trials missed in the completed block |
+
+Set either value to `null` to disable that check. The two rules are evaluated independently
+and **either** triggers exclusion.
+
+The miss rate check is deferred until the block is fully complete (i.e. until
+`blockTrials.length >= CONFIG.walkLength` for learning, or `>= CONFIG.questionsPerBlock`
+for test) — this prevents a single early miss from producing a misleading 100% rate.
+
+### What happens on exclusion
+
+1. A screen is shown with the exclusion message and an **OK button** (participant must acknowledge)
+2. On click: `jatos.abortStudy(reason)` is called — JATOS marks the result as **ABORTED**
+   and records the reason string
+3. `jsPsych.endExperiment()` is called immediately after — stops the jsPsych timeline so
+   no further stimuli can appear while JATOS navigates away
+4. The participant is **not** redirected to the Prolific completion URL
+
+### Prolific side effects
+
+Because the completion URL is never reached, Prolific treats the submission as
+incomplete. The participant's submission stays active until it times out or they return it
+manually. They will **not** be paid automatically.
+
+**Recommended handling:**
+- The exclusion screen message should instruct participants to return their submission on
+  Prolific ("Please return your submission on Prolific")
+- On the researcher side, manually review ABORTED results and decide whether to approve
+  partial payment as a goodwill gesture (common practice for attention-check exclusions)
+- Do **not** use the Prolific rejection flow for exclusions based on attention alone —
+  this can result in disputes; use "return submission" instructions instead
+
+The exclusion screen text is finalised and reads:
+*"The study has ended because too many responses were missed. Please **return your
+submission on Prolific** by clicking 'Stop without completing' on the Prolific website.
+If you have any questions, please contact the researcher."*
+
+---
+
 ## Data Recording
 
 ### Per learning phase step
@@ -518,6 +569,34 @@ variables (`practiceWalkLength`, `practiceQuestionsPerBlock`).
 - Filter rows by the participant's assigned group (stored in `jatos.studySessionData`)
   to get their specific 36-trial sequence
 - Parse with a lightweight CSV parser (e.g. PapaParse); do not write a custom parser
+
+---
+
+## Audio and Visual Feedback
+
+Both the learning and test phases provide immediate feedback on keypresses and timeouts.
+All audio is generated via the Web Audio API (no audio files required) and all functions
+live in `Utils` so both phases share a single `AudioContext`.
+
+### Keypress feedback (both phases)
+- **Sound**: `Utils.playKeyTone()` — 660 Hz sine wave, 50 ms, soft fade-out
+- **Visual**: the label of the pressed key (`F — Symmetric` / `J — Not symmetric` in
+  learning; `F — Left` / `J — Right` in test) turns green (`#27ae60`); the other label
+  dims to grey (`#aaaaaa`). Implemented via IDs `cover-label-sym` / `cover-label-notsym`
+  (learning) and `twoafc-label-left` / `twoafc-label-right` (test).
+- In the test phase, the keydown listener is registered in the **capture phase**
+  (`addEventListener(..., true)`) so it fires before jsPsych's bubble-phase handler.
+
+### Timeout feedback (test phase only)
+- **Sound**: `Utils.playTimeoutTone()` — descending sweep 440 → 200 Hz over 200 ms,
+  triggered in `on_finish` when `data.timed_out === true`.
+- No visual change on timeout (the screen transitions automatically).
+
+### Audio latency note
+Web Audio API has inherent hardware output latency (typically 20–100 ms depending on
+the system). This is a browser/OS limitation and cannot be reduced in code. The lag is
+more noticeable with Bluetooth headphones (100–300 ms additional latency); participants
+should use wired audio or speakers if they find the feedback distracting.
 
 ---
 
