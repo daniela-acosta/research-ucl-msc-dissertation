@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fractal Symmetry Ratings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; padding: 32px; color: #333; }
+    h1 { font-size: 1.4rem; margin-bottom: 24px; }
+    h2 { font-size: 1.1rem; margin: 32px 0 16px; padding-bottom: 6px;
+          border-bottom: 2px solid #ddd; }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+      padding: 12px;
+      width: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .card img {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+    }
+    .card .label {
+      font-size: 0.78rem;
+      color: #555;
+      text-align: center;
+    }
+    .card .mean-val {
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    svg.strip { overflow: visible; }
+  </style>
+</head>
+<body>
+  <h1>Fractal symmetry ratings</h1>
+  <p style="font-size:0.85rem;color:#888;margin-bottom:8px;">
+    Sorted by mean rating (low → high) &nbsp;·&nbsp;
+    Dots = individual ratings &nbsp;·&nbsp; ◆ = mean
+  </p>
+
+  <div id="root"></div>
+
+  <script>
+    const DATA = {"A": [{"stimulus": "fractal10_A.png", "stimulus_id": "fractal10", "mean": 1.11, "ratings": [2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]}, {"stimulus": "fractal21_A.png", "stimulus_id": "fractal21", "mean": 1.11, "ratings": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0]}, {"stimulus": "fractal17_A.png", "stimulus_id": "fractal17", "mean": 1.11, "ratings": [2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]}, {"stimulus": "fractal8_A.png", "stimulus_id": "fractal8", "mean": 1.22, "ratings": [1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 2.0, 1.0]}, {"stimulus": "fractal2_A.png", "stimulus_id": "fractal2", "mean": 1.33, "ratings": [2.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0]}, {"stimulus": "fractal14_A.png", "stimulus_id": "fractal14", "mean": 1.33, "ratings": [3.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0]}, {"stimulus": "fractal1_A.png", "stimulus_id": "fractal1", "mean": 1.33, "ratings": [2.0, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 2.0, 1.0]}, {"stimulus": "fractal12_A.png", "stimulus_id": "fractal12", "mean": 1.33, "ratings": [2.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 2.0, 1.0]}, {"stimulus": "fractal18_A.png", "stimulus_id": "fractal18", "mean": 1.44, "ratings": [2.0, 1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 1.0]}, {"stimulus": "fractal20_A.png", "stimulus_id": "fractal20", "mean": 1.44, "ratings": [2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 4.0, 1.0]}, {"stimulus": "fractal22_A.png", "stimulus_id": "fractal22", "mean": 1.44, "ratings": [2.0, 2.0, 1.0, 1.0, 2.0, 1.0, 1.0, 2.0, 1.0]}, {"stimulus": "fractal23_A.png", "stimulus_id": "fractal23", "mean": 1.44, "ratings": [4.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0]}, {"stimulus": "fractal19_A.png", "stimulus_id": "fractal19", "mean": 1.44, "ratings": [4.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0]}, {"stimulus": "fractal13_A.png", "stimulus_id": "fractal13", "mean": 1.5, "ratings": [2.0, 2.0, 1.0, 2.0, 1.0, 1.0, 2.0, 1.0]}, {"stimulus": "fractal16_A.png", "stimulus_id": "fractal16", "mean": 1.56, "ratings": [2.0, 2.0, 1.0, 2.0, 2.0, 2.0, 1.0, 1.0, 1.0]}, {"stimulus": "fractal5_A.png", "stimulus_id": "fractal5", "mean": 1.75, "ratings": [3.0, 3.0, 1.0, 1.0, 2.0, 1.0, 1.0, 2.0]}, {"stimulus": "fractal11_A.png", "stimulus_id": "fractal11", "mean": 1.78, "ratings": [2.0, 1.0, 1.0, 2.0, 2.0, 2.0, 1.0, 4.0, 1.0]}, {"stimulus": "fractal15_A.png", "stimulus_id": "fractal15", "mean": 2.0, "ratings": [3.0, 2.0, 1.0, 4.0, 2.0, 3.0, 1.0, 1.0, 1.0]}, {"stimulus": "fractal4_A.png", "stimulus_id": "fractal4", "mean": 2.11, "ratings": [3.0, 3.0, 1.0, 1.0, 4.0, 1.0, 1.0, 1.0, 4.0]}, {"stimulus": "fractal6_A.png", "stimulus_id": "fractal6", "mean": 2.22, "ratings": [2.0, 4.0, 1.0, 2.0, 4.0, 4.0, 1.0, 1.0, 1.0]}], "S": [{"stimulus": "fractal19_S.png", "stimulus_id": "fractal19", "mean": 4.0, "ratings": [4.0, 5.0, 3.0, 3.0, 4.0, 4.0, 5.0, 5.0, 3.0]}, {"stimulus": "fractal9_S.png", "stimulus_id": "fractal9", "mean": 4.11, "ratings": [5.0, 4.0, 2.0, 5.0, 4.0, 5.0, 5.0, 5.0, 2.0]}, {"stimulus": "fractal20_S.png", "stimulus_id": "fractal20", "mean": 4.22, "ratings": [4.0, 4.0, 3.0, 5.0, 4.0, 5.0, 5.0, 5.0, 3.0]}, {"stimulus": "fractal10_S.png", "stimulus_id": "fractal10", "mean": 4.33, "ratings": [4.0, 4.0, 3.0, 4.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal13_S.png", "stimulus_id": "fractal13", "mean": 4.44, "ratings": [5.0, 2.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal12_S.png", "stimulus_id": "fractal12", "mean": 4.44, "ratings": [5.0, 4.0, 3.0, 4.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal23_S.png", "stimulus_id": "fractal23", "mean": 4.56, "ratings": [5.0, 5.0, 3.0, 5.0, 5.0, 5.0, 5.0, 5.0, 3.0]}, {"stimulus": "fractal16_S.png", "stimulus_id": "fractal16", "mean": 4.56, "ratings": [5.0, 5.0, 3.0, 4.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal21_S.png", "stimulus_id": "fractal21", "mean": 4.56, "ratings": [5.0, 4.0, 3.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal17_S.png", "stimulus_id": "fractal17", "mean": 4.67, "ratings": [5.0, 5.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal14_S.png", "stimulus_id": "fractal14", "mean": 4.67, "ratings": [5.0, 5.0, 3.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal6_S.png", "stimulus_id": "fractal6", "mean": 4.67, "ratings": [5.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0]}, {"stimulus": "fractal7_S.png", "stimulus_id": "fractal7", "mean": 4.67, "ratings": [5.0, 5.0, 3.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal8_S.png", "stimulus_id": "fractal8", "mean": 4.78, "ratings": [5.0, 5.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal18_S.png", "stimulus_id": "fractal18", "mean": 4.78, "ratings": [5.0, 5.0, 4.0, 5.0, 4.0, 5.0, 5.0, 5.0, 5.0]}, {"stimulus": "fractal3_S.png", "stimulus_id": "fractal3", "mean": 4.78, "ratings": [5.0, 5.0, 3.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]}, {"stimulus": "fractal5_S.png", "stimulus_id": "fractal5", "mean": 4.89, "ratings": [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0]}, {"stimulus": "fractal1_S.png", "stimulus_id": "fractal1", "mean": 5.0, "ratings": [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]}, {"stimulus": "fractal4_S.png", "stimulus_id": "fractal4", "mean": 5.0, "ratings": [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]}, {"stimulus": "fractal11_S.png", "stimulus_id": "fractal11", "mean": 5.0, "ratings": [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]}]};
+
+    const STRIP_W = 156;
+    const STRIP_H = 44;
+    const PAD     = 14;          // left/right padding inside strip
+    const Y_MID   = 22;
+    const COLOURS = { A: '#e67e22', S: '#2980b9' };
+
+    function xPos(rating) {
+      // rating 1–5 → pixel x
+      return PAD + (rating - 1) / 4 * (STRIP_W - PAD * 2);
+    }
+
+    // Spread dots vertically when they share the same x bucket.
+    function yJitter(ratings) {
+      const groups = {};
+      ratings.forEach((r, i) => {
+        if (!groups[r]) groups[r] = [];
+        groups[r].push(i);
+      });
+      const jitters = new Array(ratings.length).fill(0);
+      Object.values(groups).forEach(indices => {
+        const n = indices.length;
+        if (n === 1) return;
+        const spread = Math.min((n - 1) * 5, 18);
+        indices.forEach((idx, i) => {
+          jitters[idx] = -spread / 2 + (spread / (n - 1)) * i;
+        });
+      });
+      return jitters;
+    }
+
+    function makeSVG(ratings, mean, colour) {
+      const jitters = yJitter(ratings);
+      const ns = 'http://www.w3.org/2000/svg';
+
+      const svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('class', 'strip');
+      svg.setAttribute('width',  STRIP_W);
+      svg.setAttribute('height', STRIP_H);
+
+      // Axis line
+      const line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', xPos(1)); line.setAttribute('y1', Y_MID);
+      line.setAttribute('x2', xPos(5)); line.setAttribute('y2', Y_MID);
+      line.setAttribute('stroke', '#ddd'); line.setAttribute('stroke-width', 1.5);
+      svg.appendChild(line);
+
+      // Axis tick labels
+      [1,2,3,4,5].forEach(v => {
+        const t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', xPos(v));
+        t.setAttribute('y', STRIP_H - 2);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('font-size', '9');
+        t.setAttribute('fill', '#aaa');
+        t.textContent = v;
+        svg.appendChild(t);
+      });
+
+      // Individual rating dots
+      ratings.forEach((r, i) => {
+        const cx = xPos(r);
+        const cy = Y_MID + jitters[i];
+        const circle = document.createElementNS(ns, 'circle');
+        circle.setAttribute('cx', cx); circle.setAttribute('cy', cy);
+        circle.setAttribute('r', 4);
+        circle.setAttribute('fill', colour);
+        circle.setAttribute('fill-opacity', 0.45);
+        svg.appendChild(circle);
+      });
+
+      // Mean diamond
+      const mx = xPos(mean);
+      const s  = 6;  // half-size of diamond
+      const diamond = document.createElementNS(ns, 'polygon');
+      diamond.setAttribute('points',
+        `${mx},${Y_MID - s} ${mx + s},${Y_MID} ${mx},${Y_MID + s} ${mx - s},${Y_MID}`);
+      diamond.setAttribute('fill', '#222');
+      svg.appendChild(diamond);
+
+      return svg;
+    }
+
+    function renderSection(variant, items, root) {
+      const label = variant === 'A' ? 'Asymmetrical (A)' : 'Symmetrical (S)';
+      const colour = COLOURS[variant];
+
+      const h2 = document.createElement('h2');
+      h2.textContent = label + ' — sorted by mean rating';
+      root.appendChild(h2);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const img = document.createElement('img');
+        img.src = 'stimuli/' + item.stimulus;
+        img.alt = item.stimulus;
+        card.appendChild(img);
+
+        const lbl = document.createElement('p');
+        lbl.className = 'label';
+        lbl.innerHTML = item.stimulus_id +
+          '<br><span class="mean-val">mean: ' + item.mean.toFixed(2) + '</span>';
+        card.appendChild(lbl);
+
+        card.appendChild(makeSVG(item.ratings, item.mean, colour));
+        grid.appendChild(card);
+      });
+
+      root.appendChild(grid);
+    }
+
+    const root = document.getElementById('root');
+    renderSection('A', DATA.A, root);
+    renderSection('S', DATA.S, root);
+  </script>
+</body>
+</html>
