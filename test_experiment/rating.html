@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stimulus Rating</title>
+  <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
+  <script src="jatos.js"></script>
+  <style>
+    .jspsych-content { max-width: 700px; }
+    .rating-img {
+      display: block;
+      max-width: 300px;
+      max-height: 300px;
+      margin: 0 auto 28px;
+    }
+    .rating-question {
+      font-size: 1rem;
+      color: #444;
+      margin-bottom: 6px;
+    }
+    .rating-anchors {
+      font-size: 0.82rem;
+      color: #999;
+      margin-bottom: 8px;
+    }
+    .rating-timer {
+      font-size: 0.82rem;
+      color: #bbb;
+      margin-bottom: 16px;
+      transition: color 0.3s;
+    }
+    .rating-timer.urgent { color: #e74c3c; }
+    /* Space out the 5 rating buttons */
+    .jspsych-html-button-response-button { display: inline-block; margin: 0 6px; }
+    .jspsych-html-button-response-button button { min-width: 52px; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
+
+  <script>
+    const TRIAL_DURATION = 10000; // ms
+
+    // ── Stimulus list ──────────────────────────────────────────────────────────
+    const STIMULI = [
+      'fractal1_A.png',  'fractal1_S.png',
+      'fractal2_A.png',
+      'fractal3_S.png',
+      'fractal4_A.png',  'fractal4_S.png',
+      'fractal5_A.png',  'fractal5_S.png',
+      'fractal6_A.png',  'fractal6_S.png',
+      'fractal7_S.png',
+      'fractal8_A.png',  'fractal8_S.png',
+      'fractal9_S.png',
+      'fractal10_A.png', 'fractal10_S.png',
+      'fractal11_A.png', 'fractal11_S.png',
+      'fractal12_A.png', 'fractal12_S.png',
+      'fractal13_A.png', 'fractal13_S.png',
+      'fractal14_A.png', 'fractal14_S.png',
+      'fractal15_A.png',
+      'fractal16_A.png', 'fractal16_S.png',
+      'fractal17_A.png', 'fractal17_S.png',
+      'fractal18_A.png', 'fractal18_S.png',
+      'fractal19_A.png', 'fractal19_S.png',
+      'fractal20_A.png', 'fractal20_S.png',
+      'fractal21_A.png', 'fractal21_S.png',
+      'fractal22_A.png',
+      'fractal23_A.png', 'fractal23_S.png'
+    ];
+
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    jatos.onLoad(function () {
+      const jsPsych = initJsPsych({
+        on_finish: function () {
+          const results = jsPsych.data
+            .get()
+            .filter({ trial_type_label: 'rating' })
+            .values()
+            .map(function (t) {
+              return {
+                participant_name: participantName,
+                stimulus:         t.stimulus_file,
+                stimulus_id:      t.stimulus_id,
+                variant:          t.variant,
+                rating:           t.response !== null ? t.response + 1 : null, // 0–4 → 1–5; null if timed out
+                timed_out:        t.response === null,
+                rt:               t.rt
+              };
+            });
+
+          jatos.submitResultData(JSON.stringify(results), function () {
+            jatos.endStudy(true);
+          });
+        }
+      });
+
+      const shuffled = shuffle(STIMULI);
+      const timeline = [];
+      let participantName = '';
+
+      // ── Instructions ───────────────────────────────────────────────────────
+      timeline.push({
+        type: jsPsychHtmlButtonResponse,
+        stimulus: `
+          <div style="max-width:560px;margin:0 auto;text-align:left;line-height:1.6;">
+            <h2>Image Rating Task</h2>
+            <p>You will see <strong>${shuffled.length} images</strong> one at a time.</p>
+            <p>For each image, rate how symmetrical it looks:</p>
+            <ul>
+              <li><strong>1</strong> — not symmetrical at all</li>
+              <li><strong>5</strong> — completely symmetrical</li>
+            </ul>
+            <p>You can click a button <strong>or press keys 1–5</strong> on your keyboard.</p>
+            <p>You have <strong>10 seconds</strong> per image.</p>
+          </div>`,
+        choices: ['Start']
+      });
+
+      // ── Name input ─────────────────────────────────────────────────────────
+      timeline.push({
+        type: jsPsychHtmlButtonResponse,
+        stimulus: `
+          <div style="max-width:400px;margin:0 auto;text-align:left;line-height:1.8;">
+            <h2>Before we begin</h2>
+            <p>Please enter your name:</p>
+            <input id="participant-name" type="text" autocomplete="off"
+              style="width:100%;padding:10px 12px;font-size:1rem;border:1px solid #ccc;
+                     border-radius:4px;box-sizing:border-box;margin-bottom:8px;">
+          </div>`,
+        choices: ['Continue'],
+        on_load: function () {
+          const input = document.getElementById('participant-name');
+          const btn   = document.querySelector('.jspsych-html-button-response-button button');
+          btn.disabled = true;
+          input.focus();
+          // Capture value into closure variable on every keystroke — avoids
+          // reading the DOM in on_finish, where the element may already be gone.
+          input.addEventListener('input', function () {
+            participantName = input.value.trim();
+            btn.disabled = participantName === '';
+          });
+          input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && participantName !== '') btn.click();
+          });
+        },
+        on_finish: function (data) {
+          data.participant_name = participantName;
+        }
+      });
+
+      // ── Rating trials ──────────────────────────────────────────────────────
+      shuffled.forEach(function (filename) {
+        // Parse "fractal10_A.png" → stimulus_id = "fractal10", variant = "A"
+        const base    = filename.replace('.png', '');
+        const lastUs  = base.lastIndexOf('_');
+        const stimId  = base.slice(0, lastUs);
+        const variant = base.slice(lastUs + 1);
+
+        // Closure-scoped refs so on_load and on_finish share the same interval/listener.
+        let _interval = null;
+        let _onKey    = null;
+
+        timeline.push({
+          type:           jsPsychHtmlButtonResponse,
+          trial_duration: TRIAL_DURATION,
+          stimulus: `
+            <div style="text-align:center;">
+              <img class="rating-img" src="stimuli/${filename}" alt="${filename}">
+              <p class="rating-question">How symmetrical is this image?</p>
+              <p class="rating-anchors">1 = not symmetrical at all &nbsp;·&nbsp; 5 = completely symmetrical</p>
+              <p class="rating-timer" id="rating-timer">${TRIAL_DURATION / 1000}s remaining</p>
+            </div>`,
+          choices: ['1', '2', '3', '4', '5'],
+          data: {
+            trial_type_label: 'rating',
+            stimulus_file:    filename,
+            stimulus_id:      stimId,
+            variant:          variant
+          },
+
+          on_load: function () {
+            const timerEl = document.getElementById('rating-timer');
+            let remaining = TRIAL_DURATION / 1000;
+
+            // Countdown: update every second, turn red at ≤3s.
+            _interval = setInterval(function () {
+              remaining--;
+              if (timerEl) {
+                timerEl.textContent = remaining + 's remaining';
+                if (remaining <= 3) timerEl.classList.add('urgent');
+              }
+              if (remaining <= 0) clearInterval(_interval);
+            }, 1000);
+
+            // Keys 1–5: click the corresponding button.
+            _onKey = function (e) {
+              const n = parseInt(e.key, 10);
+              if (n >= 1 && n <= 5) {
+                clearInterval(_interval);
+                document.removeEventListener('keydown', _onKey, true);
+                const btns = document.querySelectorAll(
+                  '.jspsych-html-button-response-button button'
+                );
+                if (btns[n - 1]) btns[n - 1].click();
+              }
+            };
+            document.addEventListener('keydown', _onKey, true);
+          },
+
+          on_finish: function () {
+            clearInterval(_interval);
+            document.removeEventListener('keydown', _onKey, true);
+          }
+        });
+      });
+
+      jsPsych.run(timeline);
+    });
+  </script>
+</body>
+</html>
