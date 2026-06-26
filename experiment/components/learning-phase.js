@@ -17,7 +17,7 @@ const LearningPhase = (function () {
    * @returns {object[]} Array of jsPsych timeline nodes.
    */
   function createTimeline(params) {
-    const { walk, jsPsych, block, timed, giveFeedback, checkExclusion = false } = params;
+    const { walk, jsPsych, block, timed, giveFeedback, checkExclusion = false, stimulusConfig = null } = params;
     const timeline = [];
 
     walk.forEach(function (node, stepIndex) {
@@ -43,6 +43,7 @@ const LearningPhase = (function () {
           block:            block,
           step:             stepIndex,
           node:             node,
+          stimulus_config:  stimulusConfig,
         },
         on_load: function () {
           _keyHandler = function (e) {

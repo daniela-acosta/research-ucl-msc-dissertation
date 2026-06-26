@@ -18,7 +18,7 @@ const TestPhase = (function () {
    * @returns {object[]} Array of jsPsych timeline nodes.
    */
   function createTimeline(params) {
-    const { trials, jsPsych, block, timed, giveFeedback, collectConfidence, checkExclusion = false, group, lookup } = params;
+    const { trials, jsPsych, block, timed, giveFeedback, collectConfidence, checkExclusion = false, group, lookup, stimulusConfig = null } = params;
     const isPractice = !lookup;
     const shuffled   = Utils.shuffleArray([...trials]);
     const timeline   = [];
@@ -112,7 +112,8 @@ const TestPhase = (function () {
           option_a_plausible: optionAPlausible,
           option_b_plausible: optionBPlausible,
           correct_position_practice: correctPosition,
-          group:              group
+          group:              group,
+          stimulus_config:    stimulusConfig
         },
         on_load: function () {
           // Capture phase fires before jsPsych's bubble-phase listener, ensuring

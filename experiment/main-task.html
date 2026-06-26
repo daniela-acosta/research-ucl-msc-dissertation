@@ -27,7 +27,8 @@
         }
       });
 
-      const group = jatos.studySessionData[CONFIG.sessionKeys.group];
+      const group          = jatos.studySessionData[CONFIG.sessionKeys.group];
+      const stimulusConfig = jatos.studySessionData[CONFIG.sessionKeys.stimulusConfig];
 
       // Load both CSVs in parallel, then build the question lookup.
       const [table, candidates] = await Promise.all([
@@ -50,13 +51,13 @@
         jatos.studySessionData[CONFIG.sessionKeys.walkSequences] = sequences;
 
         const learningTrials = LearningPhase.createTimeline({
-          walk, jsPsych, block, timed: true, giveFeedback: false, checkExclusion: true
+          walk, jsPsych, block, timed: true, giveFeedback: false, checkExclusion: true, stimulusConfig
         });
         timeline.push(...learningTrials);
 
         const testTrials = TestPhase.createTimeline({
           trials, jsPsych, block, timed: true, giveFeedback: false,
-          collectConfidence: true, checkExclusion: true, group, lookup
+          collectConfidence: true, checkExclusion: true, group, lookup, stimulusConfig
         });
         timeline.push(...testTrials);
 
