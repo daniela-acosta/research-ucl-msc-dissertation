@@ -3,14 +3,75 @@
 const Utils = (function () {
 
   // Returns the asset path for a given node label.
-  // Uses jatos.studyAssetsUrl when running on a JATOS server so that the absolute
-  // URL resolves correctly regardless of how JATOS maps component URLs.
-  // Falls back to a relative path for local browser testing (no JATOS server).
+  // For main nodes (A–H): looks up the fractal filename assigned to that node in
+  // studySessionData (set at consent by assignStimuli).
+  // For practice nodes (I–K): falls back to the placeholder stimulus_I.png pattern.
   function getStimulusPath(node) {
     const base = (typeof jatos !== 'undefined' && jatos.studyAssetsUrl)
       ? jatos.studyAssetsUrl
       : '.';
+    const map = jatos.studySessionData[CONFIG.sessionKeys.stimulusMap];
+    if (map && map[node]) {
+      return `${base}/${CONFIG.stimulusDir}/${map[node]}`;
+    }
     return `${base}/${CONFIG.stimulusDir}/stimulus_${node}${CONFIG.stimulusExtension}`;
+  }
+
+  // Randomly picks stimulus config 3 or 4 (equal probability).
+  function assignStimulusConfig() {
+    return Math.random() < 0.5 ? 3 : 4;
+  }
+
+  // Generates a random node→fractal assignment that satisfies the symmetry
+  // constraints for the given config (3 or 4).
+  //
+  // Graph boundary cross-edges: B↔E and D↔G.
+  // Both communities must have exactly 2S and 2A nodes.
+  //   Config 3: connected boundary pairs (B,E) and (D,G) are the same type as each other.
+  //   Config 4: connected boundary pairs are different types from each other.
+  //
+  // Returns { map, typeMap } where:
+  //   map     — { A: 'fractal19_S.png', B: 'fractal5_A.png', ... }
+  //   typeMap — { A: 'S', B: 'A', ... }
+  function assignStimuli(stimulusConfig) {
+    const sPool = shuffleArray([...CONFIG.stimuliS]);
+    const aPool = shuffleArray([...CONFIG.stimuliA]);
+
+    // Randomly pick B's symmetry type; D is the opposite (community 1 needs 1S, 1A boundary).
+    const bIsS = Math.random() < 0.5;
+    const typeMap = {};
+    typeMap['B'] = bIsS ? 'S' : 'A';
+    typeMap['D'] = bIsS ? 'A' : 'S';
+
+    // Config 3: E matches B, G matches D.
+    // Config 4: E is opposite of B, G is opposite of D.
+    if (stimulusConfig === 3) {
+      typeMap['E'] = typeMap['B'];
+      typeMap['G'] = typeMap['D'];
+    } else {
+      typeMap['E'] = bIsS ? 'A' : 'S';
+      typeMap['G'] = bIsS ? 'S' : 'A';
+    }
+
+    // NB nodes: each community needs 1S and 1A among its two NB nodes.
+    // Community 1 NB: graph nodes A and C.
+    const [aType, cType] = Math.random() < 0.5 ? ['S', 'A'] : ['A', 'S'];
+    typeMap['A'] = aType;
+    typeMap['C'] = cType;
+
+    // Community 2 NB: graph nodes F and H.
+    const [fType, hType] = Math.random() < 0.5 ? ['S', 'A'] : ['A', 'S'];
+    typeMap['F'] = fType;
+    typeMap['H'] = hType;
+
+    // Assign specific fractal images: draw from the shuffled pools in node order.
+    let sIdx = 0, aIdx = 0;
+    const map = {};
+    for (const node of CONFIG.nodes) {
+      map[node] = typeMap[node] === 'S' ? sPool[sIdx++] : aPool[aIdx++];
+    }
+
+    return { map, typeMap };
   }
 
   // Fisher-Yates in-place shuffle. Returns the same array.
@@ -230,6 +291,8 @@ const Utils = (function () {
     generatePracticeWalk,
     getProlificParams,
     assignGroup,
+    assignStimulusConfig,
+    assignStimuli,
     loadCounterbalancingTable,
     getTrialsForBlock,
     loadQuestionCandidates,

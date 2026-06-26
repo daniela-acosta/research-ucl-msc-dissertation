@@ -88,9 +88,13 @@ const CONFIG = {
   },
 
   // --- Stimuli ---
-  // Update stimulusExtension if the final asset format differs.
   stimulusDir:       'assets',
   stimulusExtension: '.png',
+
+  // The 8 selected fractal images split by symmetry type.
+  // assignStimuli() draws from these pools when building the node→image map.
+  stimuliS: ['fractal19_S.png', 'fractal9_S.png', 'fractal20_S.png', 'fractal10_S.png'],
+  stimuliA: ['fractal5_A.png',  'fractal15_A.png', 'fractal4_A.png',  'fractal6_A.png'],
 
   // --- 2AFC question lookup ---
   // Maps category number → comparison_pair_tag string in the candidates CSV.
@@ -131,11 +135,14 @@ const CONFIG = {
 
   // --- JATOS studySessionData keys ---
   sessionKeys: {
-    group:         'group',
-    prolificPID:   'prolific_pid',
-    studyID:       'study_id',
-    sessionID:     'session_id',
-    walkSequences: 'walk_sequences'
+    group:           'group',
+    prolificPID:     'prolific_pid',
+    studyID:         'study_id',
+    sessionID:       'session_id',
+    walkSequences:   'walk_sequences',
+    stimulusConfig:  'stimulus_config',   // 3 or 4
+    stimulusMap:     'stimulus_map',      // { A: 'fractal19_S.png', B: ..., ... }
+    stimulusTypeMap: 'stimulus_type_map'  // { A: 'S', B: 'A', ... }
   }
 
 };

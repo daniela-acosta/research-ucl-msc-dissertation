@@ -42,7 +42,7 @@ C: A, B, D        G: D, F, H
 D: A, C, G        H: E, F, G
 ```
 
-The graph is defined programmatically in `/planning/graph_definition.py` using networkx.
+The graph is defined programmatically in `/data_analysis/graph_definition.py` using networkx.
 **Do not redefine the graph manually elsewhere** — import or regenerate from that file.
 
 ---
@@ -124,11 +124,52 @@ Columns: `trial`, `block`, `category`, `Group_1`, `Group_2`, `Group_3`, `Group_4
 Each cell contains the question code (e.g. `3F1`) for that group × block × category slot.
 This CSV is the **source of truth** for trial assignment — do not hardcode trial sequences.
 
-The script that generated it is `/planning/counterbalancing.py`.
+The script that generated it is `/data_analysis/counterbalancing.py`.
 
 ### Option position (left/right)
 Option A vs Option B position (left/right on screen) should be **randomised** per trial
 at runtime. This is not pre-counterbalanced — handle it dynamically in jsPsych.
+
+---
+
+## Stimulus Counterbalancing
+
+Each participant is randomly assigned a **stimulus config** (3 or 4), independently of
+their counterbalancing group. The config controls how fractal symmetry type maps onto
+boundary node positions.
+
+### Constraints (both configs)
+- Each community must have exactly **2 symmetrical (S) and 2 asymmetrical (A)** nodes.
+- Both communities must have **one S and one A boundary node**.
+
+### Config 3
+The two cross-community boundary pairs (B↔E and D↔G) are the **same** symmetry type
+as each other — i.e. B and E are both S (or both A), and D and G are both S (or both A).
+
+### Config 4
+The two cross-community boundary pairs are **different** symmetry types from each other —
+i.e. B and E are opposite types, and D and G are opposite types.
+
+### Assignment algorithm (`Utils.assignStimuli(config)`)
+1. Randomly pick B's type (S or A, 50/50). D is the opposite (community 1 needs 1S, 1A boundary).
+2. Derive E and G from B and D using the config rule above.
+3. Randomly assign community 1 NB nodes (graph nodes A and C) to 1S + 1A.
+4. Randomly assign community 2 NB nodes (graph nodes F and H) to 1S + 1A.
+5. Shuffle `CONFIG.stimuliS` and `CONFIG.stimuliA` independently, then assign specific
+   fractal filenames to nodes in order.
+
+Returns `{ map, typeMap }`:
+- `map` — `{ A: 'fractal19_S.png', B: 'fractal5_A.png', ... }` stored in `studySessionData`
+- `typeMap` — `{ A: 'S', B: 'A', ... }` stored in `studySessionData` for analysis
+
+### Session data keys (set at consent)
+| Key (`CONFIG.sessionKeys.*`) | Value |
+|------------------------------|-------|
+| `stimulusConfig` | `3` or `4` |
+| `stimulusMap` | `{ A: filename, B: filename, … }` |
+| `stimulusTypeMap` | `{ A: 'S'/'A', B: 'S'/'A', … }` |
+
+Both `stimulusConfig` and `group` must be recorded in every participant's result data.
 
 ---
 
@@ -171,22 +212,42 @@ The JATOS integration pattern (all three required in every component):
 /data/                        — CSV outputs (do not delete existing files, only add)
   2afc_question_candidates_v2.csv   — full 2AFC question pool with metadata
   counterbalancing_table.csv        — pre-generated trial assignment table (canonical source)
-  (other CSVs from graph_definition.py)
+  results/                          — raw JATOS result folders for the main experiment
+    combined_raw.csv                — output of load_data.py
+    test_trials.csv                 — output of preprocess.py
+    learning_trials.csv             — output of preprocess.py
 
 /experiment/                  — jsPsych experiment (main build target)
-  package.json
-  data/                       — copies of CSVs needed at runtime (JATOS can't serve ../data/)
+  jatos.js                    — mock JATOS API for local development
+  config.js                   — all tunable parameters (single source of truth)
+  assets/                     — stimulus images and CSS
+    fractal*_S.png / fractal*_A.png  — selected real fractals (8 total)
+    stimulus_I/J/K.png        — placeholder practice stimuli (not yet finalised)
+  data/                       — runtime CSVs (JATOS can't serve ../data/)
     counterbalancing_table.csv
     2afc_question_candidates_v2.csv
   components/                 — shared JS modules (IIFE pattern, no bundler)
+    utils.js
+    learning-phase.js
+    test-phase.js
 
-/planning/                    — Python analysis and design scripts
-  counterbalancing.py         — generates counterbalancing_table.csv
-  graph_definition.py         — defines graph, generates question candidates
-  requirements.txt
+/data_analysis/               — Python and R analysis scripts (renamed from /planning/)
+  scripts/
+    load_data.py              — reads JATOS result folders → combined_raw.csv
+    preprocess.py             — cleans types, derives accuracy/confidence_z → test/learning CSVs
+    load_ratings.py           — reads symmetry rating results → ratings.csv
+    generate_ratings_viz.py   — generates test_experiment/ratings_viz.html
+    analyze_ratings.R         — ggplot2 dot plots of symmetry ratings
   venv/
+  requirements.txt
 
-/test_experiment/             — scratch JATOS test (not important, ignore)
+/test_experiment/             — standalone symmetry rating experiment (stimulus selection tool)
+  rating.html                 — jsPsych experiment: show each fractal, rate 1–5 symmetry
+  jatos.js                    — local dev mock (copy of experiment/jatos.js + endStudy)
+  stimuli/                    — all candidate fractal images (40 total, _S and _A variants)
+  results/                    — JATOS result folders from rating runs
+    ratings.csv               — combined output from load_ratings.py
+  ratings_viz.html            — generated visualisation (images + dot strips, sorted by mean)
 
 CLAUDE.md                     — this file
 .gitignore
@@ -220,7 +281,12 @@ CLAUDE.md                     — this file
 
 8. **Do not modify files in `/data/`** unless explicitly asked. New CSVs can be added.
 
-9. **The `/planning/` directory is Python-only.** Do not add JS files there.
+9. **The `/data_analysis/` directory is Python/R only.** Do not add JS files there.
+
+10. **Stimulus assignment is random at runtime** — node A does not always show the same
+    fractal. The node→fractal map is generated at consent and stored in `studySessionData`.
+    Never hardcode a node-to-image mapping anywhere other than the assignment functions in
+    `utils.js`.
 
 ---
 
@@ -233,18 +299,31 @@ the right number of steps) but dummy text throughout. Final copy will be supplie
 and dropped in without structural changes. Do not spend time on wording.
 
 ### Stimuli
-Node stimuli (the shapes shown during the learning phase) will be supplied as image
-files later. For now use **placeholder images** — an HTML canvas-drawn shape, a
-coloured div, or a simple SVG is fine. The placeholder should occupy the correct
-screen region so layout can be validated without real assets.
 
-- Stimuli are loaded by node label (A–H); the naming convention for final image files
-  will be `stimulus_A.png`, `stimulus_B.png`, etc. — build the loader to expect this
-- **Filenames must use lowercase `stimulus_`** — the code constructs paths as
-  `stimulus_A.png` (lowercase s). macOS is case-insensitive so any casing works
-  locally, but Mindprobe runs Linux which is case-sensitive — `Stimulus_A.png` causes
-  a silent 404 on the server only.
-- Do not hardcode stimuli inline; always load from a path defined in the config object
+**Final stimuli have been selected** from a pilot symmetry-rating experiment (see
+`/test_experiment/`). The 8 selected fractals, split by symmetry type:
+
+| Type | Files |
+|------|-------|
+| Symmetrical (S) | `fractal19_S.png`, `fractal9_S.png`, `fractal20_S.png`, `fractal10_S.png` |
+| Asymmetrical (A) | `fractal5_A.png`, `fractal15_A.png`, `fractal4_A.png`, `fractal6_A.png` |
+
+These files are in `experiment/assets/`. They are defined in `CONFIG.stimuliS` and
+`CONFIG.stimuliA` and must not be renamed — the filenames encode the symmetry type
+used by `assignStimuli()`.
+
+**Stimulus assignment is dynamic** (not static `stimulus_A.png` → node A). At study
+start (consent component), `Utils.assignStimulusConfig()` and `Utils.assignStimuli()`
+generate a node→fractal mapping that is stored in `jatos.studySessionData`. All
+subsequent components call `Utils.getStimulusPath(node)` which looks up the assigned
+fractal filename for that node from session data.
+
+**Practice stimuli** (nodes I, J, K) still use the placeholder `stimulus_I.png` pattern
+since practice fractals have not yet been selected. `getStimulusPath()` falls back to
+this pattern for any node not found in the session map.
+
+**Linux case-sensitivity:** Mindprobe runs Linux. File paths are case-sensitive there
+but not on macOS. Always keep filenames exactly as copied — do not rename or re-case them.
 
 ---
 
@@ -261,6 +340,9 @@ screen region so layout can be validated without real assets.
 | Cover task | Symmetry judgement shown during learning phase to mask true objective |
 | Block | One learning phase + one test phase |
 | Group | Counterbalancing group (1–4), determines which question variants a participant sees |
+| Stimulus config | Config 3 or 4 — determines how S/A fractal types map onto boundary node positions |
+| S / A | Symmetrical / Asymmetrical — the two fractal variants used as stimuli |
+| stimulus_map | Session data key holding the runtime node→fractal filename assignment |
 
 ---
 
@@ -421,6 +503,7 @@ The full walk sequence for each block is also stored as a flat array in
 | `confidence_rt` | Response time for the confidence judgement (ms); `null` if timed out |
 | `confidence_timed_out` | Boolean — whether the confidence trial exceeded `CONFIG.confidence.maxResponseTime` |
 | `group` | Counterbalancing group (1–4) |
+| `stimulus_config` | Stimulus counterbalancing config assigned to this participant (3 or 4) |
 | `prolific_pid` | Prolific participant ID — **not yet recorded in trial data**; stored in `studySessionData` at consent and saved with demographics only |
 
 ### Confidence trial rows
@@ -469,11 +552,13 @@ running. The setup that supports this:
 - When deploying to JATOS, the mock `jatos.js` can be left in the bundle — JATOS
   intercepts the request and serves its own version, ignoring the bundled file.
   Verify this holds for your JATOS version before first deployment.
-- `Utils.getStimulusPath()` uses `jatos.studyAssetsUrl` (absolute URL) when running
+- `Utils.getStimulusPath(node)` uses `jatos.studyAssetsUrl` (absolute URL) when running
   on a JATOS server, and falls back to a relative path (`./assets/...`) locally.
-  This is necessary because Mindprobe's URL routing makes relative paths unreliable
-  for assets. Stimulus filenames must use lowercase `stimulus_` prefix and uppercase
-  node label (e.g. `stimulus_A.png`) — Linux is case-sensitive unlike macOS.
+  For main nodes (A–H) it looks up the assigned fractal filename from
+  `studySessionData.stimulus_map`; for practice nodes (I–K) it falls back to
+  `stimulus_I.png` etc. Because `studySessionData` resets on page reload locally, the
+  stimulus map won't be present when opening a mid-study component directly — images
+  will fall back to the placeholder pattern, which is expected behaviour during development.
 
 ---
 
@@ -507,7 +592,7 @@ All values live in the central config object — do not hardcode them in trial l
 |-----------|-------|-------|
 | `stimulusDuration` | 2000 ms | Stimulus display including cover task response window |
 | `interStimulusInterval` | 200 ms | Blank screen between learning phase steps (no fixation cross) |
-| `walkLength` | 26 | Number of steps per learning phase block (main task) |
+| `walkLength` | 26 | Number of steps per learning phase block (main task) — **currently set to 5 in config.js for local testing; reset to 26 before deployment** |
 | `practiceWalkLength` | 26 | Same as main task for now; adjust in config to change |
 | `testMaxResponseTime` | 3000 ms | Max time to respond in 2AFC; record timeout if no response |
 | `numBlocks` | 4 | Number of learning + test block pairs |

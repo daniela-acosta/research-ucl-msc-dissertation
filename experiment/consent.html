@@ -35,6 +35,14 @@
         const group = await Utils.assignGroup();
         jatos.studySessionData[CONFIG.sessionKeys.group] = group;
 
+        // Assign stimulus config (3 or 4) and node→fractal mapping.
+        // Done independently of group assignment.
+        const stimulusConfig = Utils.assignStimulusConfig();
+        const { map, typeMap } = Utils.assignStimuli(stimulusConfig);
+        jatos.studySessionData[CONFIG.sessionKeys.stimulusConfig]  = stimulusConfig;
+        jatos.studySessionData[CONFIG.sessionKeys.stimulusMap]     = map;
+        jatos.studySessionData[CONFIG.sessionKeys.stimulusTypeMap] = typeMap;
+
         const timeline = [
           {
             type: jsPsychHtmlButtonResponse,
