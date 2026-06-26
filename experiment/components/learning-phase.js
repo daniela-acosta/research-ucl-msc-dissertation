@@ -53,7 +53,7 @@ const LearningPhase = (function () {
               const otherId   = e.key === CONFIG.coverTask.symmetric ? 'cover-label-notsym' : 'cover-label-sym';
               const pressed   = document.getElementById(pressedId);
               const other     = document.getElementById(otherId);
-              if (pressed) pressed.style.color = '#27ae60';
+              if (pressed) pressed.style.color = '#2980b9';
               if (other)   other.style.color   = '#aaaaaa';
               document.removeEventListener('keydown', _keyHandler);
               _keyHandler = null;
