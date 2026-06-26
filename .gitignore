@@ -1,5 +1,6 @@
 node_modules/
-.DS_Storevenv/
+.DS_Store
 venv/
 count-lines.sh
 data/results/
+.Rhistory
