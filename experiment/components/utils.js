@@ -129,9 +129,11 @@ const Utils = (function () {
   function loadCounterbalancingTable() {
     return new Promise((resolve, reject) => {
       Papa.parse(CONFIG.counterbalancingTablePath, {
-        download:      true,
-        header:        true,
-        dynamicTyping: true,
+        download: true,
+        header:   true,
+        // Leave question_code as a string — codes like "2E1" are valid JS scientific
+        // notation and would be silently coerced to numbers by dynamicTyping.
+        dynamicTyping: (field) => field !== 'question_code',
         complete: (results) => resolve(results.data),
         error:    (err)     => reject(err)
       });
@@ -172,10 +174,7 @@ const Utils = (function () {
 
     for (const row of candidates) {
       const category = tagToCategory[row.comparison_pair_tag];
-      if (!category) {
-        console.warn('buildQuestionLookup: unknown pair tag', row.comparison_pair_tag);
-        continue;
-      }
+      if (!category) continue;
       const code = `${category}${row.base}${row.question_number}`;
       lookup[code] = row;
     }
