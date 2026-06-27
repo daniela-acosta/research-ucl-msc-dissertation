@@ -62,7 +62,7 @@ const CONFIG = {
   // --- Block structure ---
   numBlocks:         4,
   questionsPerBlock: 36,
-  walkLength:        5,
+  walkLength:        24,
 
   // --- Practice ---
   practiceWalkLength:        5,  // same as main task; adjust here to change
