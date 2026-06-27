@@ -198,26 +198,6 @@ const TestPhase = (function () {
         });
       }
 
-      // --- Confidence timeout warning (practice only) ---
-      if (collectConfidence && giveFeedback) {
-        timeline.push({
-          timeline: [{
-            type:           jsPsychHtmlKeyboardResponse,
-            stimulus:       '<p class="feedback-incorrect">Too slow! Please rate your confidence before time runs out.</p>',
-            choices:        'NO_KEYS',
-            trial_duration: 800
-          }],
-          conditional_function: function () {
-            const last = jsPsych.data
-              .get()
-              .filter({ trial_type_label: 'confidence' })
-              .last(1)
-              .values()[0];
-            return last && last.response === null;
-          }
-        });
-      }
-
       // --- Exclusion check (main task only) ---
       if (checkExclusion) {
         const _block = block;
@@ -239,12 +219,14 @@ const TestPhase = (function () {
         });
       }
 
-      // --- Feedback (practice only) ---
+      // --- Combined feedback (practice only) ---
+      // Reads both the 2AFC outcome and the confidence timing from the test trial
+      // row (confidence_timed_out is written back by the confidence on_finish) and
+      // produces a single sentence so the two pieces of information feel unified.
       if (giveFeedback) {
-        // Use a closure copy of correctPosition so the stimulus function can read it.
-        // Filter by trial_type_label so confidence trials between 2AFC and feedback
-        // don't shift the index.
-        const expectedPosition = correctPosition;
+        const expectedPosition   = correctPosition;
+        const _collectConfidence = collectConfidence;
+        const _timed             = timed;
         timeline.push({
           timeline: [{
             type: jsPsychHtmlKeyboardResponse,
@@ -254,16 +236,30 @@ const TestPhase = (function () {
                 .filter({ trial_type_label: 'test' })
                 .last(1)
                 .values()[0];
+
               if (last.timed_out) {
-                return '<p class="feedback-incorrect">Too slow! Please respond before time runs out.</p>';
+                return '<p class="feedback-incorrect">Too slow — try to respond before the time runs out.</p>';
               }
-              const correct = last.chosen_position === expectedPosition;
-              return correct
-                ? '<p class="feedback-correct">Correct!</p>'
-                : '<p class="feedback-incorrect">Incorrect — try again!</p>';
+
+              const correct   = last.chosen_position === expectedPosition;
+              const confSlow  = _collectConfidence && last.confidence_timed_out;
+
+              if (correct && !confSlow) {
+                return _timed
+                  ? '<p class="feedback-correct">Correct, and great timing on both!</p>'
+                  : '<p class="feedback-correct">Correct!</p>';
+              }
+              if (correct && confSlow) {
+                return '<p class="feedback-correct">Correct answer! Try to rate your confidence a little faster though.</p>';
+              }
+              if (!correct && !confSlow) {
+                return '<p class="feedback-incorrect">Not quite — pay attention to which image tends to appear next.</p>';
+              }
+              // incorrect + confidence slow
+              return '<p class="feedback-incorrect">Not quite — and try to rate your confidence a little faster too.</p>';
             },
             choices:        'NO_KEYS',
-            trial_duration: 800
+            trial_duration: 1500
           }]
         });
       }

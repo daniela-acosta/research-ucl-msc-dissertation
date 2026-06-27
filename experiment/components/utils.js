@@ -14,6 +14,9 @@ const Utils = (function () {
     if (map && map[node]) {
       return `${base}/${CONFIG.stimulusDir}/${map[node]}`;
     }
+    if (CONFIG.practiceStimuli && CONFIG.practiceStimuli[node]) {
+      return `${base}/${CONFIG.stimulusDir}/${CONFIG.practiceStimuli[node]}`;
+    }
     return `${base}/${CONFIG.stimulusDir}/stimulus_${node}${CONFIG.stimulusExtension}`;
   }
 

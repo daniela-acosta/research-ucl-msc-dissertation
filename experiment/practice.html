@@ -187,6 +187,25 @@
             walk: practiceWalk, jsPsych, block: 0, timed: true, giveFeedback: true
           }),
 
+          // ── Step 5: 2AFC intro screen ─────────────────────────────────────
+          {
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: `
+              <div class="text-content">
+                <h2>Part 2: Image choice</h2>
+                <p>Well done! Now we'll practise the second part of the task.</p>
+                <p>You will see one image at the top and two images side by side below it.
+                   Your job is to choose <strong>which of the two lower images is more likely
+                   to appear after the top one</strong>, based on what you've seen so far.</p>
+                <p>Press <strong>${CONFIG.twoAFC.leftLabel}</strong> for the left image,
+                   or <strong>${CONFIG.twoAFC.rightLabel}</strong> for the right image.</p>
+                <p>After each choice you'll also be asked to rate how confident you felt
+                   on a slider from <em>totally guessing</em> to <em>completely confident</em>.</p>
+                <p>No time limit yet — take your time.</p>
+              </div>`,
+            choices: ['Start']
+          },
+
           // ── Step 5: Untimed 2AFC practice ─────────────────────────────────
           ...TestPhase.createTimeline({
             trials:            CONFIG.practiceTwoAFCTrials,

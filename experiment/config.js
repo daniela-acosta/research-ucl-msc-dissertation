@@ -31,13 +31,19 @@ const CONFIG = {
     K: ['I']
   },
 
+  // Stimulus files for practice nodes I, J, K — paths relative to stimulusDir.
+  practiceStimuli: {
+    I: 'practice/asymmetrical/fractal9_A.png',   // asymmetrical
+    J: 'practice/symmetrical/fractal2_S.png',    // symmetrical
+    K: 'practice/symmetrical/fractal22_S.png'    // symmetrical
+  },
+
   // Correct cover task response for each practice node.
-  // Placeholder values — update when real practice stimuli are defined.
   // Must match the key values in coverTask.symmetric / coverTask.notSymmetric.
   practiceCorrectAnswers: {
-    I: 'f', // symmetric
-    J: 'j', // not symmetric
-    K: 'f'  // symmetric
+    I: 'j', // fractal9_A  — asymmetrical
+    J: 'f', // fractal2_S  — symmetrical
+    K: 'f'  // fractal22_S — symmetrical
   },
 
   // Placeholder practice 2AFC trials — replace once practice stimuli and questions are designed.
