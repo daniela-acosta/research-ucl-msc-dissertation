@@ -61,7 +61,7 @@ const CONFIG = {
 
   // --- Block structure ---
   numBlocks:         4,
-  questionsPerBlock: 9,
+  questionsPerBlock: 36,
   walkLength:        5,
 
   // --- Practice ---
@@ -117,7 +117,7 @@ const CONFIG = {
   },
 
   // --- Data / counterbalancing ---
-  counterbalancingTablePath: 'data/counterbalancing_table.csv',
+  counterbalancingTablePath: 'data/counterbalancing_table_v2.csv',
   questionCandidatesPath:    'data/2afc_question_candidates_v3.csv',
 
   // --- Prolific ---
@@ -141,7 +141,6 @@ const CONFIG = {
 
   // --- JATOS studySessionData keys ---
   sessionKeys: {
-    group:           'group',
     prolificPID:     'prolific_pid',
     studyID:         'study_id',
     sessionID:       'session_id',

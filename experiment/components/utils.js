@@ -21,7 +21,7 @@ const Utils = (function () {
   }
 
   // Assigns stimulus config 3 or 4 using the JATOS Batch Session to keep counts
-  // balanced across participants (same mechanism as assignGroup).
+  // balanced across participants via the JATOS Batch Session.
   // Returns a Promise that resolves with the assigned config number (3 or 4).
   function assignStimulusConfig() {
     return new Promise((resolve) => {
@@ -124,44 +124,26 @@ const Utils = (function () {
     };
   }
 
-  // Assigns participant to the least-filled group using the JATOS Batch Session.
-  // Increments that group's counter atomically.
-  // Returns a Promise that resolves with the assigned group number (1-indexed integer).
-  function assignGroup() {
-    return new Promise((resolve) => {
-      const counts = jatos.batchSession.get('groupCounts') || { 1: 0, 2: 0, 3: 0, 4: 0 };
-      const leastFilled = Object.keys(counts).reduce((a, b) =>
-        counts[a] <= counts[b] ? a : b
-      );
-      const group = parseInt(leastFilled, 10);
-      counts[group] += 1;
-      jatos.batchSession.set('groupCounts', counts).then(() => resolve(group));
-    });
-  }
-
   // Loads and parses the counterbalancing CSV via PapaParse.
   // Returns a Promise resolving to an array of row objects.
   function loadCounterbalancingTable() {
     return new Promise((resolve, reject) => {
       Papa.parse(CONFIG.counterbalancingTablePath, {
-        download: true,
-        header:   true,
-        // Leave Group_N columns as strings — question codes like "2E1" would be
-        // misread as scientific notation (20) if dynamicTyping were applied to them.
-        dynamicTyping: (field) => !field.startsWith('Group_'),
+        download:      true,
+        header:        true,
+        dynamicTyping: true,
         complete: (results) => resolve(results.data),
         error:    (err)     => reject(err)
       });
     });
   }
 
-  // Returns the trial rows for a given group and block number,
-  // with a questionCode field added from the appropriate Group_N column.
-  function getTrialsForBlock(table, group, block) {
-    const groupKey = `Group_${group}`;
+  // Returns the trial rows for a given block number,
+  // with a questionCode field aliased from the question_code column.
+  function getTrialsForBlock(table, block) {
     return table
       .filter(row => row.block === block)
-      .map(row => ({ ...row, questionCode: row[groupKey] }));
+      .map(row => ({ ...row, questionCode: row.question_code }));
   }
 
   // Loads and parses the 2AFC question candidates CSV via PapaParse.
@@ -300,7 +282,6 @@ const Utils = (function () {
     generateRandomWalk,
     generatePracticeWalk,
     getProlificParams,
-    assignGroup,
     assignStimulusConfig,
     assignStimuli,
     loadCounterbalancingTable,

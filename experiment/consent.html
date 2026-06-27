@@ -31,12 +31,8 @@
         jatos.studySessionData[CONFIG.sessionKeys.sessionID] =
           prolific.sessionId;
 
-        // Assign counterbalancing group via JATOS Batch Session
-        const group = await Utils.assignGroup();
-        jatos.studySessionData[CONFIG.sessionKeys.group] = group;
-
         // Assign stimulus config (3 or 4) and node→fractal mapping.
-        // Done independently of group assignment, balanced via batch session.
+        // Balanced across participants via the JATOS Batch Session.
         const stimulusConfig = await Utils.assignStimulusConfig();
         const { map, typeMap } = Utils.assignStimuli(stimulusConfig);
         jatos.studySessionData[CONFIG.sessionKeys.stimulusConfig]  = stimulusConfig;

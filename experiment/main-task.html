@@ -27,7 +27,6 @@
         }
       });
 
-      const group          = jatos.studySessionData[CONFIG.sessionKeys.group];
       const stimulusConfig = jatos.studySessionData[CONFIG.sessionKeys.stimulusConfig];
 
       // Load both CSVs in parallel, then build the question lookup.
@@ -43,7 +42,7 @@
 
       for (let block = 1; block <= CONFIG.numBlocks; block++) {
         const walk   = Utils.generateRandomWalk(CONFIG.adjacency, CONFIG.nodes, CONFIG.walkLength);
-        const trials = Utils.getTrialsForBlock(table, group, block);
+        const trials = Utils.getTrialsForBlock(table, block);
 
         // Store walk sequence in studySessionData for potential later use.
         const sequences = jatos.studySessionData[CONFIG.sessionKeys.walkSequences] || {};
@@ -57,7 +56,7 @@
 
         const testTrials = TestPhase.createTimeline({
           trials, jsPsych, block, timed: true, giveFeedback: false,
-          collectConfidence: true, checkExclusion: true, group, lookup, stimulusConfig
+          collectConfidence: true, checkExclusion: true, lookup, stimulusConfig
         });
         timeline.push(...testTrials);
 

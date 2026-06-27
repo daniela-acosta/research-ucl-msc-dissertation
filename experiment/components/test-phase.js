@@ -12,13 +12,12 @@ const TestPhase = (function () {
    * @param {number}        params.block        - Block number (1-indexed); use 0 for practice.
    * @param {boolean}       params.timed        - true = 3000 ms time limit; false = no limit.
    * @param {boolean}       params.giveFeedback - Show feedback after each trial (practice only).
-   * @param {number|null}   params.group        - Counterbalancing group (null for practice).
    * @param {object|null}   params.lookup       - Question-code → candidate-row map from
    *                                              Utils.buildQuestionLookup. Pass null for practice.
    * @returns {object[]} Array of jsPsych timeline nodes.
    */
   function createTimeline(params) {
-    const { trials, jsPsych, block, timed, giveFeedback, collectConfidence, checkExclusion = false, group, lookup, stimulusConfig = null } = params;
+    const { trials, jsPsych, block, timed, giveFeedback, collectConfidence, checkExclusion = false, lookup, stimulusConfig = null } = params;
     const isPractice = !lookup;
     const shuffled   = Utils.shuffleArray([...trials]);
     const timeline   = [];
@@ -112,7 +111,6 @@ const TestPhase = (function () {
           option_a_plausible: optionAPlausible,
           option_b_plausible: optionBPlausible,
           correct_position_practice: correctPosition,
-          group:              group,
           stimulus_config:    stimulusConfig
         },
         on_load: function () {

@@ -19,50 +19,42 @@ CATEGORIES = [
     (8, 'B',  2),   #  8 questions
     (9, 'B',  2),   #  8 questions
 ]
-# Total: 16+8+8 + 8+8+16+4+8+8 = 84 ✓
+# Total unique questions: 16+8+8 + 8+8+16+4+8+8 = 84 ✓
 
-N_GROUPS = 4
 N_BLOCKS = 4
 
 # ─────────────────────────────────────────────────────────────────
-# COMPUTE WITHIN-TYPE RANK FOR EACH CATEGORY
-# This offsets the node rotation so that within any given block,
-# NB categories use different NB nodes, and B categories spread
-# across B nodes as much as possible (can't be fully unique since
-# 6 B-categories > 4 B-nodes).
-# ─────────────────────────────────────────────────────────────────
-rank = {}
-nb_r = b_r = 0
-for cat, ntype, _ in CATEGORIES:
-    if ntype == 'NB':
-        rank[cat] = nb_r; nb_r += 1
-    else:
-        rank[cat] = b_r;  b_r += 1
-
-# ─────────────────────────────────────────────────────────────────
-# ASSIGNMENT FORMULA
-#   node_index  = (group + block + rank[category]) % 4
-#   question_no = (block  % n_questions_per_node)  + 1
+# ASSIGNMENT RULES (no counterbalancing groups)
 #
-# This guarantees:
-#   • Each group sees each category × node exactly once (no within-
-#     group repetition across blocks)
-#   • n_q=4 categories: each question appears exactly 1× total
-#   • n_q=2 categories: each question appears exactly 2× total
-#   • n_q=1 categories: each question appears exactly 4× total
+# Every block shows all 4 base nodes for every category (36 questions/block).
+# The variant (question number) assigned per (block, category, node) is:
+#
+#   n/node = 4 (pool-16): variant = block number (1→v1, 2→v2, 3→v3, 4→v4)
+#             → each of 16 questions appears exactly once across the experiment
+#
+#   n/node = 2 (pool-8):  variant = (block − 1) % 2 + 1
+#             → odd blocks (1,3) use v1; even blocks (2,4) use v2
+#             → each of 8 questions appears exactly twice
+#
+#   n/node = 1 (pool-4):  variant = 1 always (only one variant exists)
+#             → each of 4 questions appears in every block (4× total)
+#             → unavoidable for category 7
 # ─────────────────────────────────────────────────────────────────
 records = []
-for g in range(N_GROUPS):
-    for b in range(N_BLOCKS):
-        for cat, ntype, n_q in CATEGORIES:
-            nodes = NB_NODES if ntype == 'NB' else B_NODES
-            node  = nodes[(g + b + rank[cat]) % 4]
-            q_num = (b % n_q) + 1
+for b in range(N_BLOCKS):
+    for cat, ntype, n_q in CATEGORIES:
+        nodes = NB_NODES if ntype == 'NB' else B_NODES
+        for node in nodes:
+            if n_q == 4:
+                q_num = b + 1              # blocks 0–3 → variants 1–4
+            elif n_q == 2:
+                q_num = (b % 2) + 1       # 0,2→1  1,3→2
+            else:
+                q_num = 1
             records.append({
-                'group'   : g + 1,
-                'block'   : b + 1,
-                'category': cat,
-                'question': f"{cat}{node}{q_num}"
+                'block'        : b + 1,
+                'category'     : cat,
+                'question_code': f"{cat}{node}{q_num}"
             })
 
 df = pd.DataFrame(records)
@@ -72,85 +64,72 @@ df = pd.DataFrame(records)
 # ─────────────────────────────────────────────────────────────────
 errors = []
 
-# 1. No within-group question repetition
-for g, gdf in df.groupby('group'):
-    dupes = gdf[gdf.duplicated('question')]
+# 1. No within-block question repetition
+for b, bdf in df.groupby('block'):
+    dupes = bdf[bdf.duplicated('question_code')]
     if not dupes.empty:
-        errors.append(f"Group {g} has duplicate questions: {dupes['question'].tolist()}")
+        errors.append(f"Block {b} has duplicate questions: {dupes['question_code'].tolist()}")
 
-# 2. Each question appears the expected number of times overall
-#    expected = 4 / n_q  (from: 16 slots per category ÷ 4 nodes ÷ n_q)
-counts = df['question'].value_counts()
+# 2. Each block has exactly 36 questions
+for b, bdf in df.groupby('block'):
+    if len(bdf) != 36:
+        errors.append(f"Block {b} has {len(bdf)} questions (expected 36)")
+
+# 3. Question appearance counts match expected values
+counts = df['question_code'].value_counts()
 for cat, ntype, n_q in CATEGORIES:
     nodes    = NB_NODES if ntype == 'NB' else B_NODES
-    expected = N_GROUPS * N_BLOCKS // (len(nodes) * n_q)
+    expected = N_BLOCKS // n_q   # 4→1×  2→2×  1→4×
     for node in nodes:
         for q in range(1, n_q + 1):
-            qname  = f"{cat}{node}{q}"
-            actual = counts.get(qname, 0)
+            code   = f"{cat}{node}{q}"
+            actual = counts.get(code, 0)
             if actual != expected:
-                errors.append(f"{qname}: expected {expected}×, got {actual}×")
+                errors.append(f"{code}: expected {expected}×, got {actual}×")
 
-# 3. Within each block, NB categories use distinct NB nodes
-for (g, b), bdf in df.groupby(['group', 'block']):
-    nb_qs = bdf[bdf['category'].isin([c for c, t, _ in CATEGORIES if t == 'NB'])]['question']
-    nb_used = [q[1] for q in nb_qs]   # extract node letter
-    if len(nb_used) != len(set(nb_used)):
-        errors.append(f"Group {g} Block {b}: NB categories share a node: {nb_used}")
+# 4. All 4 nodes appear for each (block, category) pair
+for (b, cat), bdf in df.groupby(['block', 'category']):
+    cat_ntype  = next(t for c, t, _ in CATEGORIES if c == cat)
+    expected_nodes = sorted(NB_NODES if cat_ntype == 'NB' else B_NODES)
+    actual_nodes   = sorted(bdf['question_code'].str[1].tolist())
+    if actual_nodes != expected_nodes:
+        errors.append(f"Block {b} Cat {cat}: nodes {actual_nodes} ≠ expected {expected_nodes}")
 
 if errors:
     print("VERIFICATION FAILED:")
     for e in errors: print(" •", e)
 else:
-    print("✓ No within-group question repetition")
-    print("✓ All questions appear the expected number of times")
-    print("✓ NB categories always use distinct nodes within a block")
+    print("✓ No within-block question repetition")
+    print("✓ All blocks have exactly 36 questions")
+    print("✓ All question codes appear the expected number of times")
+    print("✓ All 4 base nodes present for each (block, category) pair")
 
 # ─────────────────────────────────────────────────────────────────
 # SUMMARY STATS
 # ─────────────────────────────────────────────────────────────────
-print("\n── Question appearances across all groups ──")
-app_counts = df['question'].value_counts()
-for label, n_q in [(f"n_q={n}", n) for n in [4, 2, 1]]:
-    qs = [f"{cat}{node}{q}"
-          for cat, _, ncat_q in CATEGORIES if ncat_q == n_q
-          for node in (NB_NODES if [t for c,t,nq in CATEGORIES if c==cat][0]=='NB' else B_NODES)
-          for q in range(1, n_q + 1)]
-    expected = 4 // n_q
-    print(f"  {label} categories → {expected}× each (verified for {len(qs)} questions)")
+print(f"\n── Questions per block: {len(df) // N_BLOCKS} ──")
+print(f"── Total rows: {len(df)} ──\n")
 
-print("\n── Node usage per block (NB categories) ──")
-for (g, b), bdf in df.groupby(['group', 'block']):
-    nb_nodes = sorted([q[1] for q in bdf[bdf['category'].isin(
-        [c for c, t, _ in CATEGORIES if t == 'NB'])]['question']])
-    if g == 1:
-        print(f"  Group {g}, Block {b}: NB nodes used = {nb_nodes}")
+print("── Question appearances across all blocks ──")
+for n_q, label in [(4, "pool-16 (n/node=4)"), (2, "pool-8  (n/node=2)"), (1, "pool-4  (n/node=1)")]:
+    expected = N_BLOCKS // n_q
+    cats = [cat for cat, _, nq in CATEGORIES if nq == n_q]
+    print(f"  {label}  categories {cats}  →  {expected}× each")
+
+print("\n── Variant used per block (pool-8 and pool-16 categories) ──")
+for b in range(1, N_BLOCKS + 1):
+    bdf = df[df['block'] == b]
+    sample_n4 = bdf[bdf['category'] == 1]['question_code'].tolist()
+    sample_n2 = bdf[bdf['category'] == 2]['question_code'].tolist()
+    print(f"  Block {b}  cat1(n4): {sample_n4}  cat2(n2): {sample_n2}")
 
 # ─────────────────────────────────────────────────────────────────
 # OUTPUT TABLE
 # ─────────────────────────────────────────────────────────────────
-pivot = (df.sort_values(['block', 'category'])
-           .pivot_table(index=['block', 'category'],
-                        columns='group',
-                        values='question',
-                        aggfunc='first'))
-pivot.columns = [f'Group_{g}' for g in pivot.columns]
-pivot = pivot.reset_index()
-pivot.insert(0, 'trial', range(1, len(pivot) + 1))
+out = df.sort_values(['block', 'category', 'question_code']).reset_index(drop=True)
 
-print("\n── Counterbalancing table (36 trials × 4 groups) ──\n")
-# Print with block separators for readability
-prev_block = None
-for _, row in pivot.iterrows():
-    if row['block'] != prev_block:
-        if prev_block is not None:
-            print()
-        print(f"  {'trial':<6} {'block':<6} {'cat':<5} {'Group_1':<10} {'Group_2':<10} {'Group_3':<10} Group_4")
-        print("  " + "─"*55)
-        prev_block = row['block']
-    print(f"  {int(row['trial']):<6} {int(row['block']):<6} {int(row['category']):<5} "
-          f"{row['Group_1']:<10} {row['Group_2']:<10} {row['Group_3']:<10} {row['Group_4']}")
+print("\n── Counterbalancing table (first 18 rows) ──")
+print(out.head(18).to_string(index=False))
 
-# Save to CSV
-pivot.to_csv('../data/counterbalancing_table.csv', index=False)
-print("\n✓ Table saved to counterbalancing_table.csv")
+out.to_csv('../data/counterbalancing_table_v2.csv', index=False)
+print("\n✓ Table saved to counterbalancing_table_v2.csv")
