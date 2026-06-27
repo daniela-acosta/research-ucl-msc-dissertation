@@ -58,8 +58,8 @@ The graph is defined programmatically in `/data_analysis/graph_definition.py` us
 
 ### Block structure
 - **4 blocks** total, each containing one learning phase followed by one test phase
-- Each test phase has **9 questions** (one per comparison category)
-- **36 questions total per participant**, with no repetition across blocks
+- Each test phase has **36 questions** (4 per comparison category — all 4 base nodes used)
+- **144 questions total per participant**; questions from pool-8 categories repeat across blocks (see Counterbalancing Design)
 
 ---
 
@@ -69,8 +69,8 @@ The graph is defined programmatically in `/data_analysis/graph_definition.py` us
 Each question is identified as `[category][node][question_number]`, e.g. `1A2`.
 
 - **Category (1–9):** the comparison type (see table below)
-- **Node:** the representative base node used (rotated across blocks/groups)
-- **Question number:** index within that category × node combination
+- **Node:** the base node used (all 4 eligible nodes appear each block)
+- **Question number:** variant index within that category × node combination (1–4 for pool-16; 1–2 for pool-8; always 1 for pool-4)
 
 ### The 9 included comparison categories
 
@@ -93,42 +93,48 @@ to capture sensitivity differences between within vs cross-community transitions
 **NB categories (1–3)** use base nodes A, C, F, H.
 **B categories (4–9)** use base nodes B, D, E, G.
 
-The full question candidate list with all metadata is in `/data/2afc_question_candidates_v2.csv`.
+The full question candidate list with all metadata is in `/data/2afc_question_candidates_v3.csv`.
 Columns: `base`, `base_is_boundary`, `base_community`, `optionA_dest`, `optionA_plausible`,
 `optionA_steps`, `optionA_within_code`, `optionA_same_community`, `optionA_dest_is_boundary`,
 `optionA_tag`, `optionB_dest`, `optionB_plausible`, `optionB_steps`, `optionB_within_code`,
 `optionB_same_community`, `optionB_dest_is_boundary`, `optionB_tag`, `comparison_type`,
-`comparison_pair_tag`.
+`comparison_pair_tag`, `question_number`.
 
 ---
 
 ## Counterbalancing Design
 
-### Groups and node rotation
-- **4 counterbalancing groups** (Group 1–4), loaded from CSV at runtime
-- Each participant is assigned to one group
-- Within a block, each NB category uses a **different NB node** (diversity within block)
-- Node rotation formula: `node_index = (group + block + category_rank) % 4`
-- Question number formula: `question_number = (block % n_questions_per_node) + 1`
+There are **no counterbalancing groups**. All participants see the same fixed set of
+questions per block; the random walk, dynamic stimulus assignment (Config 3/4), and
+within-block question ordering provide participant-level variability.
 
-### Question frequency across groups
-| Category pool size | Appearances per question across all groups |
-|--------------------|------------------------------------------|
-| 16 questions (n_q=4) | 1× |
-| 8 questions (n_q=2)  | 2× |
-| 4 questions (n_q=1)  | 4× (category 7 only — unavoidable) |
+### 36 questions per block — assignment rules
+
+Each block presents all 4 eligible base nodes for every category (4 nodes × 9 categories
+= 36 questions). The specific question variant assigned to each (block, category, node)
+slot follows these rules, determined by pool size:
+
+| Pool | Categories | Per-block questions | Across-block rule | Total appearances |
+|------|-----------|--------------------|--------------------|-------------------|
+| 16 (n/node = 4) | 1, 6 | 4 (one variant per node) | Block 1→v1, Block 2→v2, Block 3→v3, Block 4→v4 | 1× each |
+| 8 (n/node = 2) | 2, 3, 4, 5, 8, 9 | 4 (one variant per node) | Odd blocks (1,3)→v1, Even blocks (2,4)→v2 | 2× each |
+| 4 (n/node = 1) | 7 | 4 (same 4 every block) | Repeats in all 4 blocks | 4× each |
+
+**No question repeats within a block.** The pool-4 (category 7) questions repeat across
+blocks (unavoidable — only 4 unique questions exist for that category).
 
 ### Counterbalancing table
-The pre-generated table is in `/data/counterbalancing_table.csv`.
-Columns: `trial`, `block`, `category`, `Group_1`, `Group_2`, `Group_3`, `Group_4`.
-Each cell contains the question code (e.g. `3F1`) for that group × block × category slot.
+The pre-generated table is in `/data/counterbalancing_table.csv` (canonical source) and
+copied to `/experiment/data/counterbalancing_table.csv` for JATOS serving.
+Columns: `block`, `category`, `question_code`.
+144 rows total (36 per block × 4 blocks). No Group columns.
 This CSV is the **source of truth** for trial assignment — do not hardcode trial sequences.
 
 The script that generated it is `/data_analysis/counterbalancing.py`.
 
 ### Option position (left/right)
-Option A vs Option B position (left/right on screen) should be **randomised** per trial
-at runtime. This is not pre-counterbalanced — handle it dynamically in jsPsych.
+Option A vs Option B position (left/right on screen) is **randomised** per trial at
+runtime. This is not pre-counterbalanced — handled dynamically in jsPsych.
 
 ---
 
@@ -169,7 +175,9 @@ Returns `{ map, typeMap }`:
 | `stimulusMap` | `{ A: filename, B: filename, … }` |
 | `stimulusTypeMap` | `{ A: 'S'/'A', B: 'S'/'A', … }` |
 
-Both `stimulusConfig` and `group` must be recorded in every participant's result data.
+Note: `group` key has been removed — there are no counterbalancing groups.
+
+`stimulusConfig` must be recorded in every participant's result data.
 
 ---
 
@@ -210,8 +218,8 @@ The JATOS integration pattern (all three required in every component):
 
 ```
 /data/                        — CSV outputs (do not delete existing files, only add)
-  2afc_question_candidates_v2.csv   — full 2AFC question pool with metadata
-  counterbalancing_table.csv        — pre-generated trial assignment table (canonical source)
+  2afc_question_candidates_v3.csv   — full 2AFC question pool with metadata (includes question_number column)
+  counterbalancing_table.csv        — pre-generated trial assignment table (canonical source; 144 rows, no groups)
   results/                          — raw JATOS result folders for the main experiment
     combined_raw.csv                — output of load_data.py
     test_trials.csv                 — output of preprocess.py
@@ -225,7 +233,7 @@ The JATOS integration pattern (all three required in every component):
     stimulus_I/J/K.png        — placeholder practice stimuli (not yet finalised)
   data/                       — runtime CSVs (JATOS can't serve ../data/)
     counterbalancing_table.csv
-    2afc_question_candidates_v2.csv
+    2afc_question_candidates_v3.csv
   components/                 — shared JS modules (IIFE pattern, no bundler)
     utils.js
     learning-phase.js
@@ -260,8 +268,9 @@ CLAUDE.md                     — this file
 1. **No question repetition within a participant.** The same question code must never
    appear twice for the same participant across blocks.
 
-2. **Counterbalancing is loaded from CSV, not hardcoded.** The experiment reads
-   `/data/counterbalancing_table.csv` and filters by the participant's assigned group.
+2. **Trial sequence is loaded from CSV, not hardcoded.** The experiment reads
+   `/experiment/data/counterbalancing_table.csv` at runtime. No group filtering — all
+   participants receive the same question set per block.
 
 3. **Questions are randomised within each block** at runtime (not pre-ordered).
 
@@ -339,7 +348,6 @@ but not on macOS. Always keep filenames exactly as copied — do not rename or r
 | 2AFC | Two-Alternative Forced Choice — "which transition is more likely?" |
 | Cover task | Symmetry judgement shown during learning phase to mask true objective |
 | Block | One learning phase + one test phase |
-| Group | Counterbalancing group (1–4), determines which question variants a participant sees |
 | Stimulus config | Config 3 or 4 — determines how S/A fractal types map onto boundary node positions |
 | S / A | Symmetrical / Asymmetrical — the two fractal variants used as stimuli |
 | stimulus_map | Session data key holding the runtime node→fractal filename assignment |
@@ -382,16 +390,7 @@ duplicate trial logic between components — parameterise it.
 
 ---
 
-## Group Assignment and Dropout Handling
-
-### Assignment strategy
-- Use the **JATOS Batch Session** for group assignment to ensure balanced group sizes
-  even with a small N (~40) and potential dropout
-- On study start, the consent component reads the current group counts from
-  `jatos.batchSession`, assigns the participant to the least-filled group, and
-  increments that group's counter atomically
-- Assigned group is then stored in `jatos.studySessionData` and read by all subsequent
-  components
+## Dropout Handling
 
 ### Dropout
 - No special recovery for incomplete participants — they are excluded from analysis
@@ -407,8 +406,7 @@ duplicate trial logic between components — parameterise it.
 - Maximum response time is **3000 ms** (configurable via `testMaxResponseTime`)
 - If no response is given within the time limit, record as a timeout (`response: null,
   rt: null, timed_out: true`) and advance automatically
-- Questions are drawn from the counterbalancing table filtered by participant group and
-  current block number
+- Questions are drawn from the counterbalancing table filtered by block number (no group column)
 
 ---
 
@@ -502,7 +500,6 @@ The full walk sequence for each block is also stored as a flat array in
 | `confidence_response` | Slider value (0–100) from the confidence judgement; `null` if timed out; written back into the 2AFC row by the confidence trial's `on_finish` |
 | `confidence_rt` | Response time for the confidence judgement (ms); `null` if timed out |
 | `confidence_timed_out` | Boolean — whether the confidence trial exceeded `CONFIG.confidence.maxResponseTime` |
-| `group` | Counterbalancing group (1–4) |
 | `stimulus_config` | Stimulus counterbalancing config assigned to this participant (3 or 4) |
 | `prolific_pid` | Prolific participant ID — **not yet recorded in trial data**; stored in `studySessionData` at consent and saved with demographics only |
 
@@ -547,8 +544,8 @@ running. The setup that supports this:
   that stubs the full JATOS API and logs all calls to the browser console.
 - `studySessionData` and `batchSession` are in-memory only in the mock — they reset
   on page reload and do not persist across components when testing locally.
-- Group assignment via `assignGroup()` will always pick group 1 on a fresh load
-  (batch session starts empty). This is expected behaviour locally.
+- There are no counterbalancing groups — `assignGroup()` has been removed. The batch session
+  is only used for stimulus config (3/4) balancing.
 - When deploying to JATOS, the mock `jatos.js` can be left in the bundle — JATOS
   intercepts the request and serves its own version, ignoring the bundled file.
   Verify this holds for your JATOS version before first deployment.
@@ -596,7 +593,7 @@ All values live in the central config object — do not hardcode them in trial l
 | `practiceWalkLength` | 26 | Same as main task for now; adjust in config to change |
 | `testMaxResponseTime` | 3000 ms | Max time to respond in 2AFC; record timeout if no response |
 | `numBlocks` | 4 | Number of learning + test block pairs |
-| `questionsPerBlock` | 9 | One per comparison category |
+| `questionsPerBlock` | 36 | 4 per comparison category (all 4 base nodes × 9 categories) |
 
 ### Response inputs
 Response keys for both the cover task and the 2AFC are **configurable variables** —
@@ -662,8 +659,7 @@ variables (`practiceWalkLength`, `practiceQuestionsPerBlock`).
 - Do **not** regenerate the table in JavaScript — the CSV is the source of truth
 - JATOS can only serve files within the study's own directory — paths like `../data/`
   will 404. All assets must be inside `/experiment/`
-- Filter rows by the participant's assigned group (stored in `jatos.studySessionData`)
-  to get their specific 36-trial sequence
+- Filter rows by block number only — no group column exists
 - Parse with a lightweight CSV parser (e.g. PapaParse); do not write a custom parser
 
 ---
@@ -677,8 +673,9 @@ live in `Utils` so both phases share a single `AudioContext`.
 ### Keypress feedback (both phases)
 - **Sound**: `Utils.playKeyTone()` — 660 Hz sine wave, 50 ms, soft fade-out
 - **Visual**: the label of the pressed key (`F — Symmetric` / `J — Not symmetric` in
-  learning; `F — Left` / `J — Right` in test) turns green (`#27ae60`); the other label
-  dims to grey (`#aaaaaa`). Implemented via IDs `cover-label-sym` / `cover-label-notsym`
+  learning; `F — Left` / `J — Right` in test) turns blue (`#2980b9`); the other label
+  dims to grey (`#aaaaaa`). Green (`#2ECC71`) is reserved for correct-answer feedback only.
+  Implemented via IDs `cover-label-sym` / `cover-label-notsym`
   (learning) and `twoafc-label-left` / `twoafc-label-right` (test).
 - In the test phase, the keydown listener is registered in the **capture phase**
   (`addEventListener(..., true)`) so it fires before jsPsych's bubble-phase handler.
@@ -699,6 +696,20 @@ should use wired audio or speakers if they find the feedback distracting.
 ## Breaks Between Blocks
 Not included in the current build. Easy to add later as a self-paced screen between
 blocks — keep this in mind when structuring the block loop.
+
+---
+
+## Git Tags
+
+Meaningful snapshots are preserved as annotated git tags so earlier designs can be recovered
+without keeping backup files in the repo.
+
+| Tag | What it preserves |
+|-----|-------------------|
+| `counterbalancing-groups-backup` | State before removing group-based counterbalancing. Contains `assignGroup()` / `getTrialsForBlock()` in `utils.js`, group assignment in `consent.html`, group pass-through in `main-task.html`, and the original 9-questions-per-block counterbalancing script. `questionsPerBlock = 9`. |
+
+To inspect a file from a tag: `git show <tag>:experiment/components/utils.js`
+To restore the full repo to a tag: `git checkout <tag>`
 
 ---
 
