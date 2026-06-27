@@ -20,9 +20,16 @@ const Utils = (function () {
     return `${base}/${CONFIG.stimulusDir}/stimulus_${node}${CONFIG.stimulusExtension}`;
   }
 
-  // Randomly picks stimulus config 3 or 4 (equal probability).
+  // Assigns stimulus config 3 or 4 using the JATOS Batch Session to keep counts
+  // balanced across participants (same mechanism as assignGroup).
+  // Returns a Promise that resolves with the assigned config number (3 or 4).
   function assignStimulusConfig() {
-    return Math.random() < 0.5 ? 3 : 4;
+    return new Promise((resolve) => {
+      const counts = jatos.batchSession.get('stimulusConfigCounts') || { 3: 0, 4: 0 };
+      const config = counts[3] <= counts[4] ? 3 : 4;
+      counts[config] += 1;
+      jatos.batchSession.set('stimulusConfigCounts', counts).then(() => resolve(config));
+    });
   }
 
   // Generates a random node→fractal assignment that satisfies the symmetry
