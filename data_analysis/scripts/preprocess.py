@@ -55,14 +55,14 @@ INT_COLS = [
     "trial_index_in_block",
     "question_number",
     "step",
-    "group",
+    "stimulus_config",
 ]
 
 # Explicit column selection for each output — prevents columns from other trial
 # types leaking in (e.g. cover_response appearing in test_trials).
 TEST_COLS = [
     # identifiers
-    "participant_id", "study_result_id", "row_id", "group",
+    "participant_id", "study_result_id", "row_id",
     # session position
     "trial_index", "time_elapsed", "block", "trial_index_in_block",
     # question metadata
@@ -76,19 +76,23 @@ TEST_COLS = [
     "chose_option_a", "chose_plausible", "timed_out",
     # confidence
     "confidence_response", "confidence_rt", "confidence_timed_out",
+    # participant config
+    "stimulus_config",
     # derived
     "accuracy", "confidence_z",
 ]
 
 LEARNING_COLS = [
     # identifiers
-    "participant_id", "study_result_id", "row_id", "group",
+    "participant_id", "study_result_id", "row_id",
     # session position
     "trial_index", "time_elapsed", "block", "step",
     # stimulus
     "node",
     # response
     "cover_response", "cover_rt",
+    # participant config
+    "stimulus_config",
     # derived
     "responded",
 ]

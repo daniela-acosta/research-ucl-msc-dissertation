@@ -114,11 +114,9 @@ def load_all(results_dir: Path) -> pd.DataFrame:
             continue
 
         # Build participant metadata from demographics (or fall back to defaults).
-        pid   = ""
-        group = None
+        pid = ""
         if demographics:
-            pid   = demographics.get("prolific_pid", "")
-            group = demographics.get("group", None)
+            pid = demographics.get("prolific_pid", "")
 
         # Use study_id as participant identifier when prolific_pid is absent
         # (e.g. local test runs).
@@ -129,12 +127,8 @@ def load_all(results_dir: Path) -> pd.DataFrame:
         df.insert(1, "study_result_id", study_id)
         df.insert(2, "row_id", participant_id + "_" + df["trial_index"].astype(str))
 
-        # Add group from demographics if not already in trial data.
-        if "group" not in df.columns and group is not None:
-            df["group"] = group
-
         all_rows.append(df)
-        print(f"  {len(df)} trials, participant_id={participant_id}, group={group}")
+        print(f"  {len(df)} trials, participant_id={participant_id}")
 
     if not all_rows:
         raise RuntimeError("No usable data found.")
