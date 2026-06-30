@@ -32,6 +32,10 @@ INPUT_PATH   = RESULTS_DIR / "combined_raw.csv"
 TEST_OUT     = RESULTS_DIR / "test_trials.csv"
 LEARNING_OUT = RESULTS_DIR / "learning_trials.csv"
 
+# Cover task response keys — must match CONFIG.coverTask in config.js.
+COVER_KEY_SYMMETRIC     = "f"
+COVER_KEY_NOT_SYMMETRIC = "j"
+
 # ---------------------------------------------------------------------------
 # Column type definitions
 # ---------------------------------------------------------------------------
@@ -88,13 +92,13 @@ LEARNING_COLS = [
     # session position
     "trial_index", "time_elapsed", "block", "step",
     # stimulus
-    "node",
+    "node", "node_symmetry_type",
     # response
     "cover_response", "cover_rt",
     # participant config
     "stimulus_config",
     # derived
-    "responded",
+    "responded", "cover_correct",
 ]
 
 
@@ -158,6 +162,26 @@ def add_confidence_z(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_cover_correct(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    cover_correct: True if the participant correctly judged the stimulus symmetry.
+    Derived from node_symmetry_type (S/A, from demographics stimulus_type_map)
+    and the configured cover task response keys.
+    NaN if no response was given (timed out / missed).
+    """
+    correct_key = df["node_symmetry_type"].map({
+        "S": COVER_KEY_SYMMETRIC,
+        "A": COVER_KEY_NOT_SYMMETRIC,
+    })
+    has_response = df["cover_response"].notna()
+    df["cover_correct"] = np.where(
+        has_response,
+        df["cover_response"] == correct_key,
+        np.nan
+    )
+    return df
+
+
 # ---------------------------------------------------------------------------
 # Main preprocessing
 # ---------------------------------------------------------------------------
@@ -182,11 +206,14 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     # ── Learning trials ──────────────────────────────────────────────────────
     learning = raw[raw["trial_type_label"] == "learning"].copy()
     learning["responded"] = learning["cover_response"].notna()
+    learning = add_cover_correct(learning)
     learning = learning[[c for c in LEARNING_COLS if c in learning.columns]].copy()
     learning.reset_index(drop=True, inplace=True)
 
     print(f"\nLearning trials : {len(learning)} rows")
-    print(f"  response rate: {learning['responded'].mean():.1%}")
+    print(f"  response rate  : {learning['responded'].mean():.1%}")
+    print(f"  cover accuracy : {learning['cover_correct'].dropna().mean():.1%} "
+          f"(of {learning['cover_correct'].notna().sum()} responded trials)")
 
     return test, learning
 

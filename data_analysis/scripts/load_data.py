@@ -114,9 +114,11 @@ def load_all(results_dir: Path) -> pd.DataFrame:
             continue
 
         # Build participant metadata from demographics (or fall back to defaults).
-        pid = ""
+        pid          = ""
+        type_map     = {}
         if demographics:
-            pid = demographics.get("prolific_pid", "")
+            pid      = demographics.get("prolific_pid", "")
+            type_map = demographics.get("stimulus_type_map", {})
 
         # Use study_id as participant identifier when prolific_pid is absent
         # (e.g. local test runs).
@@ -126,6 +128,12 @@ def load_all(results_dir: Path) -> pd.DataFrame:
         df.insert(0, "participant_id", participant_id)
         df.insert(1, "study_result_id", study_id)
         df.insert(2, "row_id", participant_id + "_" + df["trial_index"].astype(str))
+
+        # Add per-node symmetry type for learning trials (S or A).
+        # Looks up each row's node label in the participant's stimulus_type_map.
+        # Non-learning rows (test, ISI, confidence) don't have a node column and get NaN.
+        if type_map and "node" in df.columns:
+            df["node_symmetry_type"] = df["node"].map(type_map)
 
         all_rows.append(df)
         print(f"  {len(df)} trials, participant_id={participant_id}")
