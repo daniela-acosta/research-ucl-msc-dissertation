@@ -90,6 +90,65 @@ body {
   margin-bottom: 12px;
 }
 
+/* Demographics form */
+.demo-form {
+  text-align: left;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.demo-field {
+  margin-bottom: 28px;
+}
+
+.demo-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.demo-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.demo-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.demo-option input[type="radio"],
+.demo-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.demo-form input[type="number"],
+.demo-form input[type="text"] {
+  width: 100%;
+  max-width: 300px;
+  padding: 8px 12px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.demo-form textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-height: 80px;
+  resize: vertical;
+}
+
 /* Buttons */
 .jspsych-btn {
   background-color: #3498DB;

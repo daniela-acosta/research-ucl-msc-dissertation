@@ -40,18 +40,157 @@
         jatos.studySessionData[CONFIG.sessionKeys.stimulusTypeMap] = typeMap;
 
         const timeline = [
+          // Information sheet — shown before the consent form.
+          {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `
+              <div class="text-content">
+                <h2>Participant Information Sheet</h2>
+                <p style="font-size: 0.9em; color: #555;">
+                  UCL Ethics Committee approval ID Number: 2921<br />
+                  <strong>Department:</strong> UCL Department of Experimental Psychology,
+                  26 Bedford Way, London WC1H 0AP<br />
+                  <strong>Principal Researcher:</strong> Prof. Megan Peters
+                  (<a href="mailto:megan.peters@ucl.ac.uk">megan.peters@ucl.ac.uk</a>)
+                </p>
+                <hr style="margin: 1.5em 0;" />
+
+                <p>You are being invited to take part in a research study. Before you decide to take
+                   part it is important for you to understand why the research is being done and what
+                   participation will involve. Please take time to read the following information
+                   carefully and discuss it with others if you wish. Ask us if there is anything that
+                   is not clear or if you would like more information. Please take time to decide
+                   whether or not you wish to take part.</p>
+
+                <h3>What is the purpose of the research?</h3>
+                <p>We are interested in how people think, learn, and make decisions, and in their
+                   subjective experiences about thinking, learning, and deciding. This study aims to
+                   improve our understanding of these processes by asking volunteers to perform simple
+                   computer-based tasks.</p>
+
+                <h3>What does the study involve?</h3>
+                <p>You will be asked to make judgments about the characteristics of simple objects by
+                   pressing buttons. You may also be asked to answer some simple questions about
+                   yourself and your experience of the tasks. Your responses and button presses will
+                   be recorded. Full instructions and training will be provided before the experiment
+                   begins. There are no anticipated risks or benefits associated with participating in
+                   this study.</p>
+
+                <h3>Are there any benefits to taking part?</h3>
+                <p>There will be no direct benefit to you from taking part in this research. However,
+                   your data may contribute important theoretical information to our understanding of
+                   how the brain and cognition works.</p>
+
+                <h3>What happens to my data?</h3>
+                <p>To help future research and make the best use of the research data you have given us
+                   (such as answers to questionnaires) we may keep your research data indefinitely and
+                   share these. The data we collect will be shared and held as follows:</p>
+                <ul>
+                  <li>In publications, your data will be anonymised, so you cannot be identified.</li>
+                  <li>In public databases, your data will be anonymised or pseudonymised (your personal
+                      details will be removed and a code used e.g. 00001232, instead of your name).</li>
+                  <li>Personal data is any information that could be used to identify you. This includes
+                      your contact details, which will be held securely at UCL and will
+                      <strong>never</strong> be shared. Your personal data will be deleted or destroyed
+                      as soon as it is deemed redundant.</li>
+                  <li>With accredited researchers, this may have personal data within it, such as your
+                      date of birth, but we will never share your contact details.</li>
+                </ul>
+                <p>The legal basis used to process your personal data is that the research you are
+                   taking part in is deemed to be in the public interest. Your personal data will be
+                   processed so long as it is required for the research project. If we are able to
+                   anonymise or pseudonymise the personal data you provide we will undertake this, and
+                   will endeavour to minimise the processing of personal data wherever possible. The
+                   legal basis used to process special category personal data (about your personality,
+                   political opinions and/or mental health) will be for scientific and historical
+                   research or statistical purposes. We will follow UCL and legal guidelines to
+                   safeguard your data.</p>
+                <p>Further information on how UCL uses participant information can be found here:
+                   <a href="https://www.ucl.ac.uk/legal-services/privacy/participants-health-and-care-research-privacy-notice"
+                      target="_blank">www.ucl.ac.uk/legal-services/privacy/participants-health-and-care-research-privacy-notice</a></p>
+
+                <h3>Who funds this research?</h3>
+                <p>Our work is funded by charities such as the Templeton World Charity Foundation,
+                   industry and philanthropic partners such as Macroscopic, and government bodies such
+                   as the UKRI and the European Union.</p>
+
+                <h3>Who has reviewed this research?</h3>
+                <p>A Research Ethics Committee reviews all proposals for research using human
+                   participants before they can proceed. This research has been approved by the
+                   University College London Research Ethics Committee.</p>
+
+                <h3>Complaints</h3>
+                <p>If you wish to complain or have any concerns about any aspect of the way you have
+                   been approached or treated, then the UCL research complaints mechanisms are
+                   available to you. In the first instance, please talk to the researcher or the chief
+                   investigator (Prof. Megan Peters,
+                   <a href="mailto:megan.peters@ucl.ac.uk">megan.peters@ucl.ac.uk</a>) about your
+                   complaint. If you feel that the complaint has not been resolved satisfactorily,
+                   please contact the chair of the UCL Research Ethics Committee
+                   (<a href="mailto:ethics@ucl.ac.uk">ethics@ucl.ac.uk</a>).</p>
+                <p>If you are concerned about how your personal data are being processed please contact
+                   the data controller at UCL:
+                   <a href="mailto:data-protection@ucl.ac.uk">data-protection@ucl.ac.uk</a>. If you
+                   remain unsatisfied, you may wish to contact the Information Commissioner's Office
+                   (ICO). Contact details and details of data subject rights are available on the ICO
+                   website at:
+                   <a href="https://ico.org.uk/for-organisations/data-protection-reform/overview-of-the-gdpr/individuals-rights/"
+                      target="_blank">ico.org.uk</a>.</p>
+
+                <h3>What do I do if I do not want to take part anymore?</h3>
+                <p>You can stop taking part at any time and without giving a reason. If you decide not
+                   to take part anymore this will not affect any medical care you are receiving or may
+                   need in the future. If you withdraw from this study, you can still take part in the
+                   other studies. Any research data that we have already collected may still be used,
+                   unless you request that it is destroyed. However, once unidentifiable data and
+                   research results have been anonymised and shared it may not be possible for them to
+                   be destroyed, withdrawn or recalled. If you change your mind and withdraw your
+                   consent to participate in this study please inform the researcher.</p>
+              </div>`,
+            choices: ['Continue']
+          },
           {
             type: jsPsychHtmlButtonResponse,
             stimulus: `
               <div class="text-content">
                 <h2>Informed Consent</h2>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder consent text.</p>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-                   incididunt ut labore et dolore magna aliqua.</p>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam,
-                   quis nostrud exercitation ullamco laboris.</p>
-                <p>By clicking <strong>I agree</strong> you confirm that you have read and understood
-                   the above information and consent to participate.</p>
+                <p>Thank you for your interest in taking part in this research.</p>
+                <p>If you have any questions arising from the information page that you have read
+                   previously, please contact the investigator before you decide whether to continue.</p>
+
+                <p>
+                  <strong>UCL Ethics Committee approval ID Number:</strong> 2921<br />
+                  <strong>Department:</strong> UCL Department of Experimental Psychology,
+                  26 Bedford Way, London WC1H 0AP<br />
+                  <strong>Principal Researcher:</strong> Prof. Megan Peters
+                  (<a href="mailto:megan.peters@ucl.ac.uk">megan.peters@ucl.ac.uk</a>)<br />
+                  <strong>UCL Data Protection Officer:</strong> Alexandra Potts
+                  (<a href="mailto:data-protection@ucl.ac.uk">data-protection@ucl.ac.uk</a>)
+                </p>
+
+                <p>Please confirm the following:</p>
+                <ol>
+                  <li>I have read and understood the Information Sheet for this study. I have had an
+                      opportunity to consider the information and what will be expected of me.</li>
+                  <li>I consent to the processing of my personally-identifiable information for the
+                      purposes explained to me in the Information Sheet. I understand that my
+                      information will be handled in accordance with all applicable data protection
+                      legislation and ethical standards in research.</li>
+                  <li>I understand that my personal data (name, contact details etc.) will be held
+                      securely by UCL. These data will only be accessible to the study team and
+                      individuals from the University and Funder who are responsible for monitoring
+                      and audits.</li>
+                  <li>I understand that my pseudoanonymised personal data can be shared with others
+                      for future research, shared in public databases and in scientific reports.</li>
+                  <li>I understand that I am free to withdraw from this study at any time without
+                      giving a reason and this will not affect my future medical care or legal
+                      rights.</li>
+                  <li>I understand the potential benefits and risks of participating, the support
+                      available to me should I become distressed during the research, and who to
+                      contact if I wish to lodge a complaint.</li>
+                </ol>
+
+                <p>By clicking <strong>I agree to participate</strong> you confirm all of the above.</p>
               </div>`,
             choices: ['I agree to participate', 'I do not wish to participate']
           },

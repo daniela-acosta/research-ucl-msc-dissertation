@@ -33,58 +33,150 @@
       const timeline = [
         {
           type: jsPsychSurveyHtmlForm,
-          preamble: `
-            <div class="text-content">
-              <h2>About You</h2>
-              <p>Lorem ipsum placeholder — final copy will be supplied. Please answer the
-                 following questions before starting the study.</p>
+          preamble: '<h2 style="text-align:left; margin-bottom:24px;">Tell us about you</h2>',
+          html: `
+            <div class="demo-form">
+
+              <!-- Age -->
+              <div class="demo-field">
+                <label class="demo-label">Age</label>
+                <input name="age" type="number" min="18" max="99"
+                       placeholder="Enter your age" required />
+              </div>
+
+              <!-- Gender -->
+              <div class="demo-field">
+                <label class="demo-label">Gender</label>
+                <div class="demo-options">
+                  <label class="demo-option">
+                    <input type="radio" name="gender" value="female" required /> Female
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="gender" value="male" /> Male
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="gender" value="non-binary" /> Non-binary
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="gender" value="self-describe" />
+                    Prefer to self-describe
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="gender" value="prefer-not" />
+                    Prefer not to say
+                  </label>
+                </div>
+              </div>
+              <div class="demo-field" id="gender-self-describe" style="display:none;">
+                <label class="demo-label">Please describe your gender</label>
+                <input name="gender_description" type="text" placeholder="Your description" />
+              </div>
+
+              <!-- Handedness -->
+              <div class="demo-field">
+                <label class="demo-label">Handedness</label>
+                <div class="demo-options">
+                  <label class="demo-option">
+                    <input type="radio" name="handedness" value="right" required /> Right
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="handedness" value="left" /> Left
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="handedness" value="ambidextrous" /> Ambidextrous
+                  </label>
+                </div>
+              </div>
+
+              <!-- Vision -->
+              <div class="demo-field">
+                <label class="demo-label">Vision</label>
+                <div class="demo-options">
+                  <label class="demo-option">
+                    <input type="radio" name="vision" value="normal" required />
+                    Normal vision
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="vision" value="corrected-normal" />
+                    Corrected-to-normal (glasses / contact lenses)
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="vision" value="impaired" />
+                    Visual impairment (not corrected)
+                  </label>
+                </div>
+              </div>
+
+              <!-- Language — checkboxes feed into a hidden field so the plugin
+                   captures a single comma-separated value reliably. -->
+              <div class="demo-field">
+                <label class="demo-label">
+                  Preferred language
+                  <span style="font-weight:normal;color:#888;">(select all that apply)</span>
+                </label>
+                <div class="demo-options">
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="english" /> English
+                  </label>
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="french" /> French
+                  </label>
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="german" /> German
+                  </label>
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="italian" /> Italian
+                  </label>
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="spanish" /> Spanish
+                  </label>
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="portuguese" /> Portuguese
+                  </label>
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="arabic" /> Arabic
+                  </label>
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="mandarin" /> Mandarin
+                  </label>
+                  <label class="demo-option">
+                    <input type="checkbox" data-lang="other" /> Other
+                  </label>
+                </div>
+                <input type="hidden" name="language" id="lang-hidden" value="" />
+              </div>
+
+              <!-- Comments -->
+              <div class="demo-field">
+                <label class="demo-label">
+                  Any comments about the task?
+                  <span style="font-weight:normal;color:#888;">(optional)</span>
+                </label>
+                <textarea name="comments" placeholder="Your comments here…"></textarea>
+              </div>
+
             </div>
           `,
-          html: `
-            <p>
-              <label>Age:
-                <input name="age" type="number" min="18" max="99" required>
-              </label>
-            </p>
-            <p>
-              <label>Gender:
-                <select name="gender" required>
-                  <option value="">-- select --</option>
-                  <option>Female</option>
-                  <option>Male</option>
-                  <option>Non-binary</option>
-                  <option>Prefer not to say</option>
-                  <option>Other</option>
-                </select>
-              </label>
-            </p>
-            <p>
-              <label>Handedness:
-                <select name="handedness" required>
-                  <option value="">-- select --</option>
-                  <option>Right</option>
-                  <option>Left</option>
-                  <option>Ambidextrous</option>
-                </select>
-              </label>
-            </p>
-            <p>
-              <label>Native language:
-                <input name="native_language" type="text" required>
-              </label>
-            </p>
-            <p>
-              <label>Do you have normal or corrected-to-normal vision?
-                <select name="vision" required>
-                  <option value="">-- select --</option>
-                  <option>Yes</option>
-                  <option>No</option>
-                </select>
-              </label>
-            </p>
-          `,
-          button_label: 'Continue',
-          on_finish: function (data) {}
+          button_label: 'Submit',
+          on_load: function () {
+            // Gender self-describe toggle
+            document.querySelectorAll('input[name="gender"]').forEach(function (rb) {
+              rb.addEventListener('change', function () {
+                document.getElementById('gender-self-describe').style.display =
+                  this.value === 'self-describe' ? 'block' : 'none';
+              });
+            });
+
+            // Language checkboxes → hidden field
+            function updateLanguages() {
+              var checked = Array.from(document.querySelectorAll('input[data-lang]:checked'))
+                .map(function (cb) { return cb.dataset.lang; });
+              document.getElementById('lang-hidden').value = checked.join(',');
+            }
+            document.querySelectorAll('input[data-lang]').forEach(function (cb) {
+              cb.addEventListener('change', updateLanguages);
+            });
+          }
         }
       ];
 
