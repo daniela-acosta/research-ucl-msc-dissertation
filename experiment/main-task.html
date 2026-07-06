@@ -54,6 +54,14 @@
         });
         timeline.push(...learningTrials);
 
+        // Brief pause between learning and test phases to prevent key carry-over.
+        timeline.push({
+          type:           jsPsychHtmlKeyboardResponse,
+          stimulus:       '<p style="font-size:1.1em; color:#555;">Get ready for the next section…</p>',
+          choices:        'NO_KEYS',
+          trial_duration: CONFIG.learningToTestPause
+        });
+
         const testTrials = TestPhase.createTimeline({
           trials, jsPsych, block, timed: true, giveFeedback: false,
           collectConfidence: true, checkExclusion: true, lookup, stimulusConfig
