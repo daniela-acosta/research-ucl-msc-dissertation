@@ -64,6 +64,9 @@ const CONFIG = {
   questionsPerBlock: 36,
   walkLength:        40,
 
+  // --- Breaks ---
+  breakDuration: 180,   // seconds; max rest time between blocks before auto-advance
+
   // --- Practice ---
   practiceWalkLength:        5,  // same as main task; adjust here to change
   practiceQuestionsPerBlock: 3,   // placeholder — update when practice questions are defined

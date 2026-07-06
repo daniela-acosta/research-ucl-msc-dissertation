@@ -61,15 +61,58 @@
         timeline.push(...testTrials);
 
         if (block < CONFIG.numBlocks) {
+          let breakIntervalId = null;
           timeline.push({
             type: jsPsychHtmlButtonResponse,
             stimulus: `
-              <div class="text-content">
+              <div class="text-content" style="text-align:center;">
                 <h2>Block ${block} of ${CONFIG.numBlocks} complete</h2>
-                <p>Feel free to take a short break.</p>
-                <p>Press <strong>Continue</strong> when you are ready to go on.</p>
+                <p>Take a moment to rest if needed. Press <strong>Continue</strong> whenever you feel ready.
+                   The study will move on automatically when the timer reaches zero.</p>
+                <div id="break-timer" class="break-timer">3:00</div>
               </div>`,
-            choices: ['Continue']
+            choices: ['Continue'],
+            on_load: function () {
+              let remaining = CONFIG.breakDuration;
+              const timerEl = document.getElementById('break-timer');
+
+              function formatTime(s) {
+                const m   = Math.floor(s / 60);
+                const sec = s % 60;
+                return m + ':' + (sec < 10 ? '0' : '') + sec;
+              }
+
+              breakIntervalId = setInterval(function () {
+                remaining--;
+                timerEl.textContent = formatTime(remaining);
+
+                // Colour shifts as time runs low
+                if (remaining <= 10) {
+                  timerEl.style.color = '#E74C3C';
+                } else if (remaining <= 30) {
+                  timerEl.style.color = '#cc6600';
+                }
+
+                // Double beep at each minute mark
+                if (remaining === 120 || remaining === 60) {
+                  Utils.playBreakMinuteBeep();
+                }
+
+                // Short tick for the last 5 seconds
+                if (remaining <= 5 && remaining > 0) {
+                  Utils.playBreakCountdownBeep();
+                }
+
+                // Auto-advance when time is up
+                if (remaining <= 0) {
+                  clearInterval(breakIntervalId);
+                  document.querySelector('.jspsych-btn').click();
+                }
+              }, 1000);
+            },
+            on_finish: function () {
+              clearInterval(breakIntervalId);
+            }
           });
         }
       }

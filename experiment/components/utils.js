@@ -256,6 +256,44 @@ const Utils = (function () {
     } catch (e) {}
   }
 
+  // Two ascending beeps for break minute marks (880 Hz, 150 ms each, 250 ms apart).
+  function playBreakMinuteBeep() {
+    try {
+      const ctx = _getAudioCtx();
+      ctx.resume();
+      [0, 0.25].forEach(function (delay) {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type            = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.15);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.15);
+      });
+    } catch (e) {}
+  }
+
+  // Short tick for each countdown second during breaks (660 Hz, 80 ms).
+  function playBreakCountdownBeep() {
+    try {
+      const ctx = _getAudioCtx();
+      ctx.resume();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type            = 'sine';
+      osc.frequency.value = 660;
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.08);
+    } catch (e) {}
+  }
+
   // Descending tone played on timeout (440 → 200 Hz over 200 ms).
   function playTimeoutTone() {
     try {
@@ -289,6 +327,8 @@ const Utils = (function () {
     buildQuestionLookup,
     playKeyTone,
     playTimeoutTone,
+    playBreakMinuteBeep,
+    playBreakCountdownBeep,
     shouldExclude
   };
 

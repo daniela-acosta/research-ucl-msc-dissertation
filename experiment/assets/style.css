@@ -90,6 +90,22 @@ body {
   margin-bottom: 12px;
 }
 
+/* Break screen */
+.break-timer {
+  font-size: 3em;
+  font-weight: bold;
+  color: #3498DB;
+  margin: 24px 0;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.5s;
+}
+
+.break-warning {
+  color: #cc6600;
+  font-size: 0.9em;
+  margin-top: 4px;
+}
+
 /* Demographics form */
 .demo-form {
   text-align: left;
