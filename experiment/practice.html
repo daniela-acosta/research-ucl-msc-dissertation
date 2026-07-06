@@ -161,6 +161,7 @@
       // ── Practice loop ────────────────────────────────────────────────────────
       // Steps 3–7 repeat if the participant chooses "Repeat practice".
       // Comprehension checks are excluded so their closure state doesn't need to reset.
+      let practiceRepeats = 0;
       const practiceLoop = {
         timeline: [
 
@@ -242,20 +243,34 @@
 
           // ── Step 7: Repeat or proceed ─────────────────────────────────────
           {
-            type:     jsPsychHtmlButtonResponse,
-            stimulus: `
-              <div class="text-content">
-                <h2>Practice complete</h2>
-                <p>Would you like to repeat the practice, or are you ready to start the main task?</p>
-              </div>`,
-            choices: ['Repeat practice', 'Start main task']
+            type: jsPsychHtmlButtonResponse,
+            stimulus: function () {
+              return practiceRepeats < 1
+                ? `<div class="text-content">
+                     <h2>Practice complete</h2>
+                     <p>Would you like to repeat the practice, or are you ready to start the main task?</p>
+                   </div>`
+                : `<div class="text-content">
+                     <h2>Practice complete</h2>
+                     <p>You are ready to start the main task.</p>
+                   </div>`;
+            },
+            choices: function () {
+              return practiceRepeats < 1
+                ? ['Repeat practice', 'Start main task']
+                : ['Start main task'];
+            }
           }
 
         ],
         loop_function: function () {
-          // Repeat if the participant clicked "Repeat practice" (response index 0).
           const last = jsPsych.data.get().last(1).values()[0];
-          return last && last.response === 0;
+          // Only repeat if "Repeat practice" (index 0) was chosen and limit not reached.
+          if (last && last.response === 0 && practiceRepeats < 1) {
+            practiceRepeats++;
+            return true;
+          }
+          return false;
         }
       };
 
