@@ -63,7 +63,7 @@ const CONFIG = {
   // --- Block structure ---
   numBlocks:         4,
   questionsPerBlock: 36,
-  walkLength:        40,
+  walkLength:        4,
 
   // --- Breaks ---
   breakDuration: 180,   // seconds; max rest time between blocks before auto-advance

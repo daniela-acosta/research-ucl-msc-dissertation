@@ -68,33 +68,29 @@ const TestPhase = (function () {
       }
 
       // --- Build stimulus HTML ---
+      // Only the base image goes in the stimulus; option images live inside the buttons.
       const stimulusHtml =
-        '<div class="twoafc-container">' +
-          '<div class="twoafc-base">' +
-            '<p class="key-prompt">Which image is more likely to come next?</p>' +
-            '<img src="' + Utils.getStimulusPath(baseNode) + '" class="stimulus-image" alt="base stimulus">' +
-          '</div>' +
-          '<div class="twoafc-options">' +
-            '<div class="twoafc-option">' +
-              '<img src="' + Utils.getStimulusPath(leftNode) + '" class="stimulus-image" alt="left option">' +
-              '<p class="key-prompt"><strong id="twoafc-label-left">'  + CONFIG.twoAFC.leftLabel  + '</strong></p>' +
-            '</div>' +
-            '<div class="twoafc-option">' +
-              '<img src="' + Utils.getStimulusPath(rightNode) + '" class="stimulus-image" alt="right option">' +
-              '<p class="key-prompt"><strong id="twoafc-label-right">' + CONFIG.twoAFC.rightLabel + '</strong></p>' +
-            '</div>' +
-          '</div>' +
+        '<div class="twoafc-base">' +
+          '<p class="key-prompt">Which image is more likely to come next?</p>' +
+          '<img src="' + Utils.getStimulusPath(baseNode) + '" class="stimulus-image" alt="base stimulus">' +
         '</div>';
 
       // --- 2AFC trial ---
-      let _keyHandler = null;
+      // Uses button response so participants click the image directly.
+      // response: 0 = left, 1 = right, null = timed out.
+      const leftChoiceHtml =
+        '<img src="' + Utils.getStimulusPath(leftNode) + '" class="stimulus-image" alt="left option">' +
+        '<p class="key-prompt">Click to choose</p>';
+      const rightChoiceHtml =
+        '<img src="' + Utils.getStimulusPath(rightNode) + '" class="stimulus-image" alt="right option">' +
+        '<p class="key-prompt">Click to choose</p>';
 
       timeline.push({
-        type:               jsPsychHtmlKeyboardResponse,
-        stimulus:           stimulusHtml,
-        choices:            [CONFIG.twoAFC.left, CONFIG.twoAFC.right],
-        trial_duration:     timed ? CONFIG.testMaxResponseTime : null,
-        response_ends_trial: true,
+        type:           jsPsychHtmlButtonResponse,
+        stimulus:       stimulusHtml,
+        choices:        [leftChoiceHtml, rightChoiceHtml],
+        button_html:    '<button class="twoafc-btn">%choice%</button>',
+        trial_duration: timed ? CONFIG.testMaxResponseTime : null,
         data: {
           trial_type_label:   'test',
           block:              block,
@@ -113,45 +109,25 @@ const TestPhase = (function () {
           correct_position_practice: correctPosition,
           stimulus_config:    stimulusConfig
         },
-        on_load: function () {
-          // Capture phase fires before jsPsych's bubble-phase listener, ensuring
-          // the tone and highlight land before the trial advances.
-          _keyHandler = function (e) {
-            if (e.key === CONFIG.twoAFC.left || e.key === CONFIG.twoAFC.right) {
-              Utils.playKeyTone();
-              const pressedId = e.key === CONFIG.twoAFC.left ? 'twoafc-label-left' : 'twoafc-label-right';
-              const otherId   = e.key === CONFIG.twoAFC.left ? 'twoafc-label-right' : 'twoafc-label-left';
-              const pressed   = document.getElementById(pressedId);
-              const other     = document.getElementById(otherId);
-              if (pressed) pressed.style.color = '#2980b9';
-              if (other)   other.style.color   = '#aaaaaa';
-              document.removeEventListener('keydown', _keyHandler, true);
-              _keyHandler = null;
-            }
-          };
-          document.addEventListener('keydown', _keyHandler, true);
-        },
         on_finish: function (data) {
-          if (_keyHandler) {
-            document.removeEventListener('keydown', _keyHandler, true);
-            _keyHandler = null;
-          }
-          if (data.response === CONFIG.twoAFC.left) {
-            data.chosen_position = 'left';
-            data.chosen_node     = data.option_left;
-            data.chose_option_a  = data.left_is_option_a;
-          } else if (data.response === CONFIG.twoAFC.right) {
-            data.chosen_position = 'right';
-            data.chosen_node     = data.option_right;
-            data.chose_option_a  = !data.left_is_option_a;
-          } else {
+          data.timed_out = data.response === null;
+          if (data.timed_out) {
+            Utils.playTimeoutTone();
             data.chosen_position = null;
             data.chosen_node     = null;
             data.chose_option_a  = null;
+          } else {
+            Utils.playKeyTone();
+            if (data.response === 0) {
+              data.chosen_position = 'left';
+              data.chosen_node     = data.option_left;
+              data.chose_option_a  = data.left_is_option_a;
+            } else {
+              data.chosen_position = 'right';
+              data.chosen_node     = data.option_right;
+              data.chose_option_a  = !data.left_is_option_a;
+            }
           }
-          data.timed_out = data.response === null;
-          if (data.timed_out) Utils.playTimeoutTone();
-
           // Plausibility of the chosen option (main task only)
           if (data.chose_option_a !== null && data.left_is_option_a !== null) {
             data.chose_plausible = data.chose_option_a

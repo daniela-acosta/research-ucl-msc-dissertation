@@ -25,33 +25,39 @@ body {
   object-fit: contain;
 }
 
-/* 2AFC top/bottom layout */
-.twoafc-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-}
-
+/* 2AFC layout */
 .twoafc-base {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  margin-bottom: 24px;
 }
 
-.twoafc-options {
+/* Button group rendered by jsPsych — override default layout */
+.jspsych-html-button-response-btngroup {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  justify-content: center;
   gap: 40px;
 }
 
-.twoafc-option {
+/* Each clickable option */
+.twoafc-btn {
+  background-color: white;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  transition: border-color 0.1s, background-color 0.1s;
+}
+
+.twoafc-btn:hover {
+  border-color: #3498DB;
 }
 
 /* Key prompts */
