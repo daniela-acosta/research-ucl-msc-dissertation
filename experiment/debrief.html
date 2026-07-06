@@ -9,6 +9,7 @@
 </head>
 <body>
   <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
   <script src="config.js"></script>
 
@@ -16,15 +17,77 @@
     jatos.onLoad(function () {
       const jsPsych = initJsPsych({
         on_finish: function () {
-          // Record debrief completion, then redirect to Prolific
           jatos.endStudyAndRedirect(CONFIG.prolificCompletionURL);
         }
       });
 
-      // Debrief reveals the true purpose of the study.
-      // Final copy will be supplied — lorem ipsum for now.
-
       const timeline = [
+
+        // Awareness questions — all optional, saved immediately before showing the reveal.
+        {
+          type: jsPsychSurveyHtmlForm,
+          preamble: `
+            <h2 style="text-align:left; margin-bottom:12px;">A few quick questions</h2>
+            <p style="text-align:left; margin-bottom:24px; color:#555;">
+              These are optional — answer as much or as little as you like.
+            </p>`,
+          html: `
+            <div class="demo-form">
+
+              <div class="demo-field">
+                <label class="demo-label">
+                  What do you think the study was measuring or testing?
+                </label>
+                <textarea name="study_purpose_guess"
+                          placeholder="Your answer here…"></textarea>
+              </div>
+
+              <div class="demo-field">
+                <label class="demo-label">
+                  Did you notice if the fractals were arranged in any way?
+                </label>
+                <div class="demo-options">
+                  <label class="demo-option">
+                    <input type="radio" name="noticed_arrangement" value="yes" /> Yes
+                  </label>
+                  <label class="demo-option">
+                    <input type="radio" name="noticed_arrangement" value="no" /> No
+                  </label>
+                </div>
+              </div>
+
+              <div class="demo-field" id="arrangement-description" style="display:none;">
+                <label class="demo-label">Please describe what you noticed</label>
+                <textarea name="arrangement_description"
+                          placeholder="Your answer here…"></textarea>
+              </div>
+
+              <div class="demo-field">
+                <label class="demo-label">
+                  Do you have any other comments or questions?
+                </label>
+                <textarea name="other_comments"
+                          placeholder="Your answer here…"></textarea>
+              </div>
+
+            </div>`,
+          button_label: 'Continue',
+          on_load: function () {
+            document.querySelectorAll('input[name="noticed_arrangement"]').forEach(function (rb) {
+              rb.addEventListener('change', function () {
+                document.getElementById('arrangement-description').style.display =
+                  this.value === 'yes' ? 'block' : 'none';
+              });
+            });
+          },
+          on_finish: function (data) {
+            // Save awareness responses immediately so they are not lost if the
+            // participant closes the window before clicking "Finish".
+            jatos.submitResultData(JSON.stringify({ debrief_questions: data.response }));
+          }
+        },
+
+        // Debrief reveal.
         {
           type: jsPsychHtmlButtonResponse,
           stimulus: `
@@ -39,10 +102,10 @@
               <p>If you have any questions or concerns, please contact the principal researcher
                  Prof. Megan Peters at
                  <a href="mailto:megan.peters@ucl.ac.uk">megan.peters@ucl.ac.uk</a>.</p>
-            </div>
-          `,
+            </div>`,
           choices: ['Finish and claim reward']
         }
+
       ];
 
       jsPsych.run(timeline);
