@@ -10,12 +10,16 @@
 <body>
   <script src="https://unpkg.com/jspsych@7.3.4"></script>
   <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
   <script src="config.js"></script>
 
   <script>
     jatos.onLoad(function () {
+      let exclusionTriggered = false;
+
       const jsPsych = initJsPsych({
         on_finish: function () {
+          if (exclusionTriggered) return;
           const formResponse = jsPsych.data.get().values()[0].response;
           const record = {
             ...formResponse,
@@ -176,6 +180,31 @@
             document.querySelectorAll('input[data-lang]').forEach(function (cb) {
               cb.addEventListener('change', updateLanguages);
             });
+          }
+        },
+
+        // Shown only if participant reported uncorrected visual impairment.
+        {
+          timeline: [{
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `
+              <div class="text-content">
+                <p>Thank you for your interest in this study.</p>
+                <p>Unfortunately, normal or corrected-to-normal vision is required to participate,
+                   and you are therefore not eligible to take part.</p>
+                <p>Please <strong>return your submission on Prolific</strong> by clicking
+                   "Stop without completing" on the Prolific website.</p>
+              </div>`,
+            choices: ['OK'],
+            on_finish: function () {
+              exclusionTriggered = true;
+              jatos.abortStudy('Participant does not meet vision eligibility criteria.');
+              jsPsych.endExperiment();
+            }
+          }],
+          conditional_function: function () {
+            const last = jsPsych.data.get().last(1).values()[0];
+            return last && last.response && last.response.vision === 'impaired';
           }
         }
       ];
