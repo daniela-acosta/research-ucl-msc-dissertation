@@ -182,6 +182,63 @@ const Utils = (function () {
     return lookup;
   }
 
+  // ---------- Exclusion warnings ----------
+
+  // Tracks which (phase, block) pairs have already triggered the miss-rate warning,
+  // so it fires at most once per block regardless of how many more misses follow.
+  const _missRateWarned = new Set();
+
+  // Returns true the first time the cumulative miss rate in the current block reaches
+  // maxMissRateWarning. Requires at least 5 trials so early flukes don't trigger it.
+  function shouldWarnMissRate(jsPsych, trialTypeLabel, block) {
+    const cfg = trialTypeLabel === 'learning'
+      ? CONFIG.exclusion.learning
+      : CONFIG.exclusion.test;
+    if (!cfg || !cfg.maxMissRateWarning) return false;
+
+    const key = trialTypeLabel + '-' + block;
+    if (_missRateWarned.has(key)) return false;
+
+    const blockTrials = jsPsych.data
+      .get()
+      .filter({ trial_type_label: trialTypeLabel })
+      .values()
+      .filter(t => t.block === block);
+
+    if (blockTrials.length < 5) return false;
+
+    const rate = blockTrials.filter(t => t.response === null).length / blockTrials.length;
+    if (rate >= cfg.maxMissRateWarning) {
+      _missRateWarned.add(key);
+      return true;
+    }
+    return false;
+  }
+
+  // Returns true exactly when the consecutive-miss streak is one away from the
+  // exclusion threshold (i.e. streak === maxConsecutiveMisses - 1).
+  // Shows the warning once per streak build-up; if the participant responds,
+  // the streak resets and the warning can appear again if they miss again.
+  function shouldWarnConsecutiveMisses(jsPsych, trialTypeLabel) {
+    const cfg = trialTypeLabel === 'learning'
+      ? CONFIG.exclusion.learning
+      : CONFIG.exclusion.test;
+    if (!cfg || cfg.maxConsecutiveMisses === null || cfg.maxConsecutiveMisses < 2) return false;
+
+    const threshold = cfg.maxConsecutiveMisses - 1;
+    const trials = jsPsych.data
+      .get()
+      .filter({ trial_type_label: trialTypeLabel })
+      .values();
+
+    let streak = 0;
+    for (let i = trials.length - 1; i >= 0; i--) {
+      if (trials[i].response === null) streak++;
+      else break;
+    }
+    return streak === threshold;
+  }
+
   // ---------- Exclusion checks ----------
   // Returns true if the participant should be excluded based on their miss pattern
   // for the given phase. Checks consecutive misses across all blocks and miss rate
@@ -329,6 +386,8 @@ const Utils = (function () {
     playTimeoutTone,
     playBreakMinuteBeep,
     playBreakCountdownBeep,
+    shouldWarnMissRate,
+    shouldWarnConsecutiveMisses,
     shouldExclude
   };
 

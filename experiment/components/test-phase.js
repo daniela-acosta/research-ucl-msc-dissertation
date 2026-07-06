@@ -139,9 +139,10 @@ const TestPhase = (function () {
         }
       });
 
-      // --- Confidence judgement ---
+      // --- Confidence judgement (skipped if 2AFC timed out) ---
       if (collectConfidence) {
         timeline.push({
+          timeline: [{
           type:             jsPsychHtmlSliderResponse,
           stimulus:         '<p class="key-prompt">How confident are you in your response?</p>',
           data: { trial_type_label: 'confidence' },
@@ -168,6 +169,40 @@ const TestPhase = (function () {
               twoAFCTrial.confidence_rt        = data.rt;
               twoAFCTrial.confidence_timed_out = data.response === null;
             }
+          }
+          }],
+          conditional_function: function () {
+            const last = jsPsych.data.get().filter({ trial_type_label: 'test' }).last(1).values()[0];
+            return last && !last.timed_out;
+          }
+        });
+      }
+
+      // --- Warnings (main task only) ---
+      if (checkExclusion) {
+        const _warnBlock = block;
+
+        // Consecutive-miss warning — fires one miss before exclusion.
+        timeline.push({
+          timeline: [{
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: '<div class="text-content"><p><strong>Please try to respond!</strong> You have missed several responses in a row. If you miss the next one, the study will end automatically.</p><p>Please make sure to click one of the images before the time runs out.</p></div>',
+            choices:  ['OK, I will try']
+          }],
+          conditional_function: function () {
+            return Utils.shouldWarnConsecutiveMisses(jsPsych, 'test');
+          }
+        });
+
+        // Cumulative miss-rate warning — fires once per block when rate hits 40%.
+        timeline.push({
+          timeline: [{
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: '<div class="text-content"><p><strong>You are missing too many responses.</strong> A high proportion of your responses so far have been missed. If this continues, the study will end automatically.</p><p>Please make sure to click one of the images before the time runs out.</p></div>',
+            choices:  ['OK, I will try']
+          }],
+          conditional_function: function () {
+            return Utils.shouldWarnMissRate(jsPsych, 'test', _warnBlock);
           }
         });
       }

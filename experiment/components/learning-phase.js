@@ -111,7 +111,36 @@ const LearningPhase = (function () {
         data:           { trial_type_label: 'isi' }
       });
 
-      // 4. Exclusion check (main task only)
+      // 4. Warnings (main task only)
+      if (checkExclusion) {
+        const _warnBlock = block;
+
+        // Consecutive-miss warning — fires one miss before exclusion.
+        timeline.push({
+          timeline: [{
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: '<div class="text-content"><p><strong>Please try to respond!</strong> You have missed several responses in a row. If you miss the next one, the study will end automatically.</p><p>Please make sure to press <strong>F</strong> or <strong>J</strong> before each image disappears.</p></div>',
+            choices:  ['OK, I will try']
+          }],
+          conditional_function: function () {
+            return Utils.shouldWarnConsecutiveMisses(jsPsych, 'learning');
+          }
+        });
+
+        // Cumulative miss-rate warning — fires once per block when rate hits 40%.
+        timeline.push({
+          timeline: [{
+            type:     jsPsychHtmlButtonResponse,
+            stimulus: '<div class="text-content"><p><strong>You are missing too many responses.</strong> A high proportion of your responses so far have been missed. If this continues, the study will end automatically.</p><p>Please make sure to press <strong>F</strong> or <strong>J</strong> before each image disappears.</p></div>',
+            choices:  ['OK, I will try']
+          }],
+          conditional_function: function () {
+            return Utils.shouldWarnMissRate(jsPsych, 'learning', _warnBlock);
+          }
+        });
+      }
+
+      // 5. Exclusion check (main task only)
       if (checkExclusion) {
         const _block = block;
         timeline.push({
