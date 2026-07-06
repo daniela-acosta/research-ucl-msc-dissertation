@@ -257,7 +257,7 @@ const TestPhase = (function () {
               return '<p class="feedback-incorrect">Not quite — and try to rate your confidence a little faster too.</p>';
             },
             choices:        'NO_KEYS',
-            trial_duration: 1500
+            trial_duration: CONFIG.practiceFeedbackDuration
           }]
         });
       }

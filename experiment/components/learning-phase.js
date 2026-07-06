@@ -85,7 +85,7 @@ const LearningPhase = (function () {
                 : '<p class="feedback-incorrect">Incorrect — try again!</p>';
             },
             choices:        'NO_KEYS',
-            trial_duration: 600,
+            trial_duration: CONFIG.practiceFeedbackDuration,
           });
         } else {
           timeline.push({
@@ -93,7 +93,7 @@ const LearningPhase = (function () {
               type:           jsPsychHtmlKeyboardResponse,
               stimulus:       '<p class="feedback-incorrect">Too slow! Please respond before the image disappears.</p>',
               choices:        'NO_KEYS',
-              trial_duration: 800,
+              trial_duration: CONFIG.practiceFeedbackDuration,
             }],
             conditional_function: function () {
               return jsPsych.data.get().last(1).values()[0].response === null;

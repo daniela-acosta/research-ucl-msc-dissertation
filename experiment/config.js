@@ -68,6 +68,7 @@ const CONFIG = {
   breakDuration: 180,   // seconds; max rest time between blocks before auto-advance
 
   // --- Practice ---
+  practiceFeedbackDuration:  2500, // ms; how long feedback is shown after each practice trial
   practiceWalkLength:        5,  // same as main task; adjust here to change
   practiceQuestionsPerBlock: 3,   // placeholder — update when practice questions are defined
 
