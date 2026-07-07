@@ -40,8 +40,16 @@
         { type: jsPsychFullscreen, fullscreen_mode: true }
       ];
 
+      // Generate all walks upfront, discarding and retrying any set that fails validation.
+      let walks;
+      do {
+        walks = Array.from({ length: CONFIG.numBlocks }, () =>
+          Utils.generateRandomWalk(CONFIG.adjacency, CONFIG.nodes, CONFIG.walkLength)
+        );
+      } while (!Utils.walksAreValid(walks));
+
       for (let block = 1; block <= CONFIG.numBlocks; block++) {
-        const walk   = Utils.generateRandomWalk(CONFIG.adjacency, CONFIG.nodes, CONFIG.walkLength);
+        const walk   = walks[block - 1];
         const trials = Utils.getTrialsForBlock(table, block);
 
         // Store walk sequence in studySessionData for potential later use.

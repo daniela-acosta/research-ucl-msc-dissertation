@@ -63,7 +63,7 @@ const CONFIG = {
   // --- Block structure ---
   numBlocks:         4,
   questionsPerBlock: 36,
-  walkLength:        4,
+  walkLength:        48,
 
   // --- Breaks ---
   breakDuration: 180,   // seconds; max rest time between blocks before auto-advance
@@ -119,6 +119,14 @@ const CONFIG = {
     7: 'B1XB__B2WB',
     8: 'B1XB__B2XNB',
     9: 'B1WNB__B1XB',
+  },
+
+  // --- Random walk validation ---
+  // Walks that fail any criterion are discarded and regenerated at study start.
+  walkValidation: {
+    minNodeAppearances:   3,    // every node must appear at least this many times
+    maxCommunityFraction: 2/3,  // no community may occupy more than this fraction of steps
+    maxNodeFraction:      1/5   // no single node may occupy more than this fraction of steps
   },
 
   // --- Data / counterbalancing ---

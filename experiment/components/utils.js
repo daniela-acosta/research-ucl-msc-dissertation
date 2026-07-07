@@ -107,6 +107,38 @@ const Utils = (function () {
     return walk;
   }
 
+  // Validates a set of walks (one per block) against CONFIG.walkValidation criteria.
+  // Returns true only if every walk passes all checks.
+  function walksAreValid(walks) {
+    const cfg = CONFIG.walkValidation;
+
+    for (const walk of walks) {
+      const n = walk.length;
+
+      // Count occurrences of each node.
+      const counts = {};
+      for (const node of walk) counts[node] = (counts[node] || 0) + 1;
+
+      // Every node must appear at least minNodeAppearances times.
+      for (const node of CONFIG.nodes) {
+        if ((counts[node] || 0) < cfg.minNodeAppearances) return false;
+      }
+
+      // No single node may exceed maxNodeFraction of the walk.
+      for (const node of CONFIG.nodes) {
+        if ((counts[node] || 0) / n > cfg.maxNodeFraction) return false;
+      }
+
+      // No community may exceed maxCommunityFraction of the walk.
+      for (const community of Object.values(CONFIG.communities)) {
+        const total = community.reduce((sum, node) => sum + (counts[node] || 0), 0);
+        if (total / n > cfg.maxCommunityFraction) return false;
+      }
+    }
+
+    return true;
+  }
+
   // Deterministic practice walk: cycles I→J→K→I→... for the given length.
   function generatePracticeWalk(length) {
     const nodes = CONFIG.practiceNodes;
@@ -374,6 +406,7 @@ const Utils = (function () {
     getStimulusPath,
     shuffleArray,
     generateRandomWalk,
+    walksAreValid,
     generatePracticeWalk,
     getProlificParams,
     assignStimulusConfig,
