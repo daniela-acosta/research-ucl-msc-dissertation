@@ -606,3 +606,38 @@ out = f"../data/results/exploration_by_category_T2{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
+
+# ── fig_heatmap: fractal × node assignment counts ────────────────────────────
+# Deduplicate to one row per (participant, node) — the fractal is constant
+# within a participant, so any trial row will do.
+node_order    = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+fractal_order = sorted(tt["base_fractal"].dropna().unique())   # alphabetical → S/A grouped by number
+
+assignment = (
+    tt.dropna(subset=["base_fractal"])
+    .drop_duplicates(subset=["participant_id", "base_node"])[["base_node", "base_fractal"]]
+    .groupby(["base_fractal", "base_node"])
+    .size()
+    .unstack(fill_value=0)
+    .reindex(index=fractal_order, columns=node_order, fill_value=0)
+)
+
+fig_hm, ax_hm = plt.subplots(figsize=(9, 6))
+sns.heatmap(
+    assignment,
+    ax=ax_hm,
+    annot=True,
+    fmt="d",
+    cmap="YlOrRd",
+    linewidths=0.5,
+    linecolor="white",
+    cbar_kws={"label": "Number of participants"},
+)
+ax_hm.set_xlabel("Node position")
+ax_hm.set_ylabel("Fractal")
+ax_hm.set_title(f"Fractal–Node Assignment Counts — {title_tag}")
+plt.tight_layout()
+out = f"../data/results/exploration_fractal_node_heatmap{file_suffix}.png"
+plt.savefig(out, dpi=150, bbox_inches="tight")
+plt.close()
+subprocess.run(["open", out])
