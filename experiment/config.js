@@ -57,7 +57,7 @@ const CONFIG = {
   // --- Timing (ms) ---
   stimulusDuration:       2000,
   interStimulusInterval:  200,
-  testMaxResponseTime:    3000,
+  testMaxResponseTime:    4000,
   learningToTestPause:    2000,  // blank-ish pause between learning and test phases
 
   // --- Block structure ---
