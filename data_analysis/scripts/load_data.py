@@ -126,11 +126,13 @@ def load_all(results_dir: Path) -> pd.DataFrame:
             continue
 
         # Build participant metadata from demographics (or fall back to defaults).
-        pid      = ""
-        type_map = {}
+        pid       = ""
+        type_map  = {}
+        stim_map  = {}
         if demographics:
-            pid      = demographics.get("prolific_pid", "")
-            type_map = demographics.get("stimulus_type_map", {})
+            pid       = demographics.get("prolific_pid", "")
+            type_map  = demographics.get("stimulus_type_map", {})
+            stim_map  = demographics.get("stimulus_map", {})
 
         # Use study_id as participant identifier when prolific_pid is absent
         # (e.g. local test runs).
@@ -144,6 +146,18 @@ def load_all(results_dir: Path) -> pd.DataFrame:
         # Add per-node symmetry type for learning trials (S or A).
         if type_map and "node" in df.columns:
             df["node_symmetry_type"] = df["node"].map(type_map)
+
+        # Add fractal filename columns for test trials.
+        if stim_map:
+            for col, out in [
+                ("node",        "fractal"),
+                ("base_node",   "base_fractal"),
+                ("option_left",  "option_left_fractal"),
+                ("option_right", "option_right_fractal"),
+                ("chosen_node",  "chosen_fractal"),
+            ]:
+                if col in df.columns:
+                    df[out] = df[col].map(stim_map)
 
         # Flatten debrief awareness questions as participant-level columns.
         if debrief:

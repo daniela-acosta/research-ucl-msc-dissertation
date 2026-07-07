@@ -73,10 +73,12 @@ TEST_COLS = [
     "question_code", "question_number", "category",
     "comparison_pair_tag", "comparison_type",
     # stimulus
-    "base_node", "option_left", "option_right",
+    "base_node", "base_fractal",
+    "option_left", "option_left_fractal",
+    "option_right", "option_right_fractal",
     "left_is_option_a", "option_a_plausible", "option_b_plausible",
     # response
-    "rt", "response", "chosen_position", "chosen_node",
+    "rt", "response", "chosen_position", "chosen_node", "chosen_fractal",
     "chose_option_a", "chose_plausible", "timed_out",
     # confidence
     "confidence_response", "confidence_rt", "confidence_timed_out",
@@ -92,7 +94,7 @@ LEARNING_COLS = [
     # session position
     "trial_index", "time_elapsed", "block", "step",
     # stimulus
-    "node", "node_symmetry_type",
+    "node", "fractal", "node_symmetry_type",
     # response
     "cover_response", "cover_rt",
     # participant config
