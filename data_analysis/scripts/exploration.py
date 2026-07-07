@@ -177,6 +177,41 @@ dest_fractal_res = (
 print("\n── BY CHOSEN (DESTINATION) FRACTAL ──")
 print(dest_fractal_res.to_string(index=False))
 
+tt_resp = tt[tt["timed_out"] == False].copy()
+tt_resp["base_sym_type"] = tt_resp["base_fractal"].str.extract(r"_(S|A)\.png")
+
+BOUNDARY = {"B", "D", "E", "G"}
+tt_resp["base_node_type"] = tt_resp["base_node"].map(lambda n: "B" if n in BOUNDARY else "NB")
+
+sym_res = (
+    tt_resp.groupby("base_sym_type")
+    .agg(
+        accuracy        =("accuracy",            "mean"),
+        mean_rt         =("rt",                  "mean"),
+        mean_confidence =("confidence_response", "mean"),
+    )
+    .round(3)
+    .reset_index()
+    .rename(columns={"base_sym_type": "type", "mean_rt": "rt", "mean_confidence": "confidence"})
+)
+print("\n── BY BASE FRACTAL TYPE (S vs A) ──")
+print(sym_res.to_string(index=False))
+
+nb_res = (
+    tt_resp.groupby("base_node_type")
+    .agg(
+        accuracy        =("accuracy",            "mean"),
+        mean_rt         =("rt",                  "mean"),
+        mean_confidence =("confidence_response", "mean"),
+    )
+    .round(3)
+    .reset_index()
+    .rename(columns={"base_node_type": "type", "mean_rt": "rt", "mean_confidence": "confidence"})
+    .sort_values("type")
+)
+print("\n── BY BASE NODE TYPE (B vs NB) ──")
+print(nb_res.to_string(index=False))
+
 # BY BLOCK
 # COVER TASK
 ct_res_block = (
