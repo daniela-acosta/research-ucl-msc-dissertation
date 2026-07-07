@@ -26,28 +26,36 @@
       const pages = [
         `<div class="text-content">
           <h2>Welcome</h2>
-          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder welcome text.</p>
-          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-             incididunt ut labore et dolore magna aliqua.</p>
+          <p>In this study you will view a series of images and make quick judgements about
+             each one.</p>
+          <p>The study consists of several rounds, each made up of two parts: a
+             <strong>viewing task</strong> and a <strong>choice task</strong>. We will explain
+             both before you begin.</p>
+          <p>The study takes approximately 35–40 minutes. Please make sure you are in a quiet
+             place where you can focus without interruption.</p>
         </div>`,
 
         `<div class="text-content">
-          <h2>Your Task</h2>
-          <p>Lorem ipsum placeholder — explain the symmetry judgement task here.</p>
-          <p>Each time an image appears on screen, judge whether it is <strong>symmetric</strong>.</p>
+          <h2>Part 1: Viewing Task</h2>
+          <p>Images will appear on screen one at a time. Your job is to judge whether each
+             image is <strong>symmetric</strong> — that is, whether it looks roughly the same
+             on both sides.</p>
           <p>Press <strong>${CONFIG.coverTask.symmetricLabel}</strong> if the image is symmetric.</p>
           <p>Press <strong>${CONFIG.coverTask.notSymmetricLabel}</strong> if it is not symmetric.</p>
-          <p>Respond as quickly and accurately as you can.</p>
+          <p>Each image is shown for ${CONFIG.stimulusDuration / 1000} seconds. Try to respond
+             before it disappears. Respond as quickly and accurately as you can.</p>
         </div>`,
 
         `<div class="text-content">
-          <h2>Test Questions</h2>
-          <p>Lorem ipsum placeholder — explain the 2AFC test questions here.</p>
-          <p>You will occasionally be shown two images and asked to judge which is more likely
-             to follow a third image.</p>
+          <h2>Part 2: Choice Task</h2>
+          <p>At the end of each round you will be shown a series of choice questions. Each
+             question shows one image at the top and two images below it. Your job is to judge
+             <strong>which of the two lower images is more likely to have appeared after the
+             top image</strong> during the sequence you just viewed.</p>
           <p><strong>Click</strong> the image you choose. You have
              ${CONFIG.testMaxResponseTime / 1000} seconds to respond.</p>
-          <p>After each choice you will be asked to rate how confident you felt on a slider.</p>
+          <p>After each choice you will be asked to rate how confident you felt on a slider
+             from <em>totally guessing</em> to <em>completely confident</em>.</p>
         </div>`,
 
         `<div class="text-content">
@@ -57,9 +65,13 @@
         </div>`,
 
         `<div class="text-content">
-          <h2>Ready?</h2>
-          <p>Lorem ipsum placeholder — final instructions before practice begins.</p>
-          <p>Click <strong>Next</strong> to start the practice block.</p>
+          <h2>Ready to begin?</h2>
+          <p>You will now complete a short practice round to get familiar with both tasks.
+             The practice uses different images from the main study and will not affect your
+             results.</p>
+          <p>You will receive feedback during practice. Take your time — the main study will
+             begin once the practice is complete.</p>
+          <p>Click <strong>Next</strong> when you are ready.</p>
         </div>`
       ];
 
