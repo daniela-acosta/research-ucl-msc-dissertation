@@ -6,8 +6,9 @@ Reads raw JATOS result folders and outputs a single combined CSV.
 Expected folder layout:
     data/results/
         study_result_<N>/
-            comp-result_<M>/data.txt   ← demographics (JSON object)
+            comp-result_<M>/data.txt   ← demographics (JSON object, has "age" key)
             comp-result_<K>/data.txt   ← main task    (JSON array)
+            comp-result_<J>/data.txt   ← debrief      (JSON object, has "debrief_questions" key)
 
 Output:
     data/results/combined_raw.csv
@@ -63,25 +64,36 @@ def _load_component(path: Path) -> dict | list | None:
         return None
 
 
-def _classify_components(study_dir: Path) -> tuple[dict | None, list | None]:
+def _classify_components(
+    study_dir: Path,
+) -> tuple[dict | None, list | None, dict | None]:
     """
-    Separate demographics (JSON object) from main-task (JSON array) files.
-    Returns (demographics_dict, trials_list). Either may be None if not found.
+    Separate the three component types by content:
+      - demographics: JSON object with an "age" key
+      - main task:    JSON array
+      - debrief:      JSON object with a "debrief_questions" key
+
+    Returns (demographics_dict, trials_list, debrief_dict).
+    Any element may be None if that component was not found.
     """
     demographics = None
     trials       = None
+    debrief      = None
 
     for comp_dir in sorted(study_dir.iterdir()):
         data_file = comp_dir / "data.txt"
         if not data_file.exists():
             continue
         payload = _load_component(data_file)
-        if isinstance(payload, dict):
-            demographics = payload
-        elif isinstance(payload, list):
+        if isinstance(payload, list):
             trials = payload
+        elif isinstance(payload, dict):
+            if "debrief_questions" in payload:
+                debrief = payload
+            else:
+                demographics = payload   # age, gender, stimulus_config, etc.
 
-    return demographics, trials
+    return demographics, trials, debrief
 
 
 # ---------------------------------------------------------------------------
@@ -107,15 +119,15 @@ def load_all(results_dir: Path) -> pd.DataFrame:
         study_id = _study_id_from_path(study_dir)
         print(f"Loading {study_dir.name} …")
 
-        demographics, trials = _classify_components(study_dir)
+        demographics, trials, debrief = _classify_components(study_dir)
 
         if trials is None:
             print(f"  WARNING: no main-task data found — skipping.")
             continue
 
         # Build participant metadata from demographics (or fall back to defaults).
-        pid          = ""
-        type_map     = {}
+        pid      = ""
+        type_map = {}
         if demographics:
             pid      = demographics.get("prolific_pid", "")
             type_map = demographics.get("stimulus_type_map", {})
@@ -130,13 +142,18 @@ def load_all(results_dir: Path) -> pd.DataFrame:
         df.insert(2, "row_id", participant_id + "_" + df["trial_index"].astype(str))
 
         # Add per-node symmetry type for learning trials (S or A).
-        # Looks up each row's node label in the participant's stimulus_type_map.
-        # Non-learning rows (test, ISI, confidence) don't have a node column and get NaN.
         if type_map and "node" in df.columns:
             df["node_symmetry_type"] = df["node"].map(type_map)
 
+        # Flatten debrief awareness questions as participant-level columns.
+        if debrief:
+            dq = debrief.get("debrief_questions", {})
+            for key, val in dq.items():
+                df[f"debrief_{key}"] = val if val != "" else None
+
         all_rows.append(df)
-        print(f"  {len(df)} trials, participant_id={participant_id}")
+        print(f"  {len(df)} trials, participant_id={participant_id}"
+              + ("" if debrief else " [no debrief]"))
 
     if not all_rows:
         raise RuntimeError("No usable data found.")
