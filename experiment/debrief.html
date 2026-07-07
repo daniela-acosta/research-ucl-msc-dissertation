@@ -12,6 +12,66 @@
   <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
   <script src="config.js"></script>
+  <script src="components/utils.js"></script>
+
+  <script>
+    // Builds an SVG graph showing the participant's actual fractal-to-node mapping.
+    function buildGraphSVG() {
+      const pos = {
+        A: [130,130], B: [310,130], C: [130,310], D: [310,310],
+        E: [530,130], F: [710,130], G: [530,310], H: [710,310]
+      };
+      const intraEdges = [
+        ['A','B'],['A','C'],['A','D'],['B','C'],['C','D'],
+        ['E','F'],['E','H'],['F','G'],['F','H'],['G','H']
+      ];
+      const crossEdges = [['B','E'],['D','G']];
+      const r = 46;
+
+      const line = ([n1,n2], color, dash='') => {
+        const [x1,y1] = pos[n1], [x2,y2] = pos[n2];
+        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+                  stroke="${color}" stroke-width="2.5"
+                  ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+      };
+
+      const defs = '<defs>' +
+        Object.keys(pos).map(n =>
+          `<clipPath id="dc${n}"><circle cx="${pos[n][0]}" cy="${pos[n][1]}" r="${r-2}"/></clipPath>`
+        ).join('') +
+      '</defs>';
+
+      const edges =
+        intraEdges.map(e => line(e, '#5a5a72')).join('') +
+        crossEdges.map(e => line(e, '#c07850', '8 4')).join('');
+
+      const nodes = Object.keys(pos).map(n => {
+        const [cx,cy] = pos[n];
+        const src = Utils.getStimulusPath(n);
+        return `
+          <image href="${src}" x="${cx-r+2}" y="${cy-r+2}"
+                 width="${(r-2)*2}" height="${(r-2)*2}" clip-path="url(#dc${n})"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#4a4a62" stroke-width="2"/>`;
+      }).join('');
+
+      return `
+        <svg viewBox="0 0 840 420" xmlns="http://www.w3.org/2000/svg"
+             style="width:100%;max-width:680px;margin:24px auto;display:block">
+          <rect x="55" y="40" width="320" height="320" rx="14"
+                fill="#f7f4ff" stroke="#ccc4ee" stroke-width="1.5"/>
+          <rect x="465" y="40" width="320" height="320" rx="14"
+                fill="#f0f8ff" stroke="#b8d8e8" stroke-width="1.5"/>
+          <text x="215" y="30" text-anchor="middle" font-family="Arial,sans-serif"
+                font-size="12" letter-spacing="1" fill="#9988bb">GROUP 1</text>
+          <text x="625" y="30" text-anchor="middle" font-family="Arial,sans-serif"
+                font-size="12" letter-spacing="1" fill="#7799aa">GROUP 2</text>
+          ${defs}${edges}${nodes}
+        </svg>
+        <p style="text-align:center;font-size:13px;color:#999;margin-top:4px">
+          — — — connects the two groups
+        </p>`;
+    }
+  </script>
 
   <script>
     jatos.onLoad(function () {
@@ -99,6 +159,12 @@
                  with a hidden community structure. Rather than measuring symmetry judgements, we
                  were interested in whether you implicitly learned the statistical patterns of that
                  network — and, if so, at what point that knowledge became conscious.</p>
+              <p>The images belonged to two groups. Images within the same group appeared after
+                 each other more often, while the dashed line shows the rarer connections between
+                 groups. Here is the network your images were arranged in:</p>
+            </div>
+            ${buildGraphSVG()}
+            <div class="text-content" style="margin-top:16px">
               <p>If you have any questions or concerns, please contact the principal researcher
                  Prof. Megan Peters at
                  <a href="mailto:megan.peters@ucl.ac.uk">megan.peters@ucl.ac.uk</a>.</p>
