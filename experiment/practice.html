@@ -9,6 +9,7 @@
 </head>
 <body>
   <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-preload@1.1.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
   <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script>
@@ -100,8 +101,17 @@
       // ── Build timeline ──────────────────────────────────────────────────────
       // Fullscreen and comprehension checks run once only — they sit outside the
       // repeat loop so closure state doesn't need to reset between repeats.
+      const practiceImagePaths = CONFIG.practiceNodes.map(n => Utils.getStimulusPath(n));
+
       const timeline = [
-        { type: jsPsychFullscreen, fullscreen_mode: true }
+        { type: jsPsychFullscreen, fullscreen_mode: true },
+        {
+          type: jsPsychPreload,
+          images: practiceImagePaths,
+          show_progress_bar: true,
+          message: '<p>Loading, please wait…</p>',
+          error_message: '<p>Some images failed to load. Please refresh and try again.</p>',
+        }
       ];
 
       // ── Step 1: Cover task comprehension check ──────────────────────────────
