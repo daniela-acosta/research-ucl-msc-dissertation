@@ -17,7 +17,7 @@ const TestPhase = (function () {
    * @returns {object[]} Array of jsPsych timeline nodes.
    */
   function createTimeline(params) {
-    const { trials, jsPsych, block, timed, giveFeedback, collectConfidence, checkExclusion = false, lookup, stimulusConfig = null } = params;
+    const { trials, jsPsych, block, timed, giveFeedback, warnOnTimeout = false, collectConfidence, checkExclusion = false, lookup, stimulusConfig = null } = params;
     const isPractice = !lookup;
     const shuffled   = Utils.shuffleArray([...trials]);
     const timeline   = [];
@@ -228,10 +228,34 @@ const TestPhase = (function () {
         });
       }
 
-      // --- Combined feedback (practice only) ---
-      // Reads both the 2AFC outcome and the confidence timing from the test trial
-      // row (confidence_timed_out is written back by the confidence on_finish) and
-      // produces a single sentence so the two pieces of information feel unified.
+      // --- Timing feedback (warnOnTimeout, no correctness) ---
+      // Shown when warnOnTimeout is true and the 2AFC or confidence trial timed out.
+      if (warnOnTimeout && !giveFeedback) {
+        const _collectConfidence = collectConfidence;
+        timeline.push({
+          timeline: [{
+            type:           jsPsychHtmlKeyboardResponse,
+            stimulus: function () {
+              const last = jsPsych.data.get().filter({ trial_type_label: 'test' }).last(1).values()[0];
+              if (last.timed_out) {
+                return '<p class="feedback-incorrect">Too slow — try to respond before the time runs out.</p>';
+              }
+              return '<p class="feedback-incorrect">Try to rate your confidence a little faster.</p>';
+            },
+            choices:        'NO_KEYS',
+            trial_duration: CONFIG.practiceFeedbackDuration
+          }],
+          conditional_function: function () {
+            const last = jsPsych.data.get().filter({ trial_type_label: 'test' }).last(1).values()[0];
+            if (!last) return false;
+            return last.timed_out || (_collectConfidence && last.confidence_timed_out);
+          }
+        });
+      }
+
+      // --- Correctness feedback (giveFeedback, practice only) ---
+      // Reads both the 2AFC outcome and the confidence timing and produces a
+      // single sentence so the two pieces of information feel unified.
       if (giveFeedback) {
         const expectedPosition   = correctPosition;
         const _collectConfidence = collectConfidence;
@@ -250,8 +274,8 @@ const TestPhase = (function () {
                 return '<p class="feedback-incorrect">Too slow — try to respond before the time runs out.</p>';
               }
 
-              const correct   = last.chosen_position === expectedPosition;
-              const confSlow  = _collectConfidence && last.confidence_timed_out;
+              const correct  = last.chosen_position === expectedPosition;
+              const confSlow = _collectConfidence && last.confidence_timed_out;
 
               if (correct && !confSlow) {
                 return _timed
@@ -264,7 +288,6 @@ const TestPhase = (function () {
               if (!correct && !confSlow) {
                 return '<p class="feedback-incorrect">Not quite — pay attention to which image tends to appear next.</p>';
               }
-              // incorrect + confidence slow
               return '<p class="feedback-incorrect">Not quite — and try to rate your confidence a little faster too.</p>';
             },
             choices:        'NO_KEYS',
