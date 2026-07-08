@@ -20,6 +20,14 @@
   <script src="components/test-phase.js"></script>
 
   <script>
+    // Prevent the browser back button from restarting the practice.
+    history.pushState(null, null, location.href);
+    window.addEventListener('popstate', function () {
+      history.pushState(null, null, location.href);
+    });
+  </script>
+
+  <script>
     jatos.onLoad(function () {
       const jsPsych = initJsPsych({
         on_finish: function () {
