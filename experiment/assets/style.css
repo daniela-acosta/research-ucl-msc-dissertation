@@ -20,8 +20,8 @@ body {
 
 /* Stimulus */
 .stimulus-image {
-  width: 200px;
-  height: 200px;
+  width: 260px;
+  height: 260px;
   object-fit: contain;
 }
 
