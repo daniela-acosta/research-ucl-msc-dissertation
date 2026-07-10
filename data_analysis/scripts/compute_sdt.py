@@ -1,7 +1,8 @@
 """
 compute_sdt.py
 --------------
-Computes d' and meta-d' for T1 trials at the block level, per participant.
+Computes d' and meta-d' for T1 trials at the block level, per participant,
+and d' by question category (T1, all blocks combined — too sparse for meta-d').
 
 d'      — 2AFC formula: d' = √2 × Φ⁻¹(p_correct), loglinear-corrected.
 meta-d' — MLE estimation via metadpy (Maniscalco & Lau 2012).
@@ -133,6 +134,48 @@ def compute_sdt(tt: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# d' by question category (T1 only, all blocks combined)
+# ---------------------------------------------------------------------------
+
+def compute_dprime_by_category(tt: pd.DataFrame) -> pd.DataFrame:
+    """d' per participant × comparison_pair_tag for T1 trials (all blocks).
+
+    meta-d' is omitted at this level — ~16 trials per cell is too sparse for
+    reliable MLE estimation.
+    """
+    T1_ORDER = [
+        "NB1WB__NB2XB", "NB1WNB__NB2XB",
+        "B1WNB__B2WB",  "B1WNB__B2XNB",
+        "B1XB__B2WB",   "B1XB__B2XNB",
+    ]
+
+    t1 = tt[(tt["comparison_type"] == "T1") & (tt["timed_out"] == False)].copy()
+
+    rows = []
+    for (pid, tag), grp in t1.groupby(["participant_id", "comparison_pair_tag"]):
+        n_total   = len(grp)
+        n_correct = int(grp["accuracy"].sum())
+        dp        = dprime_2afc(n_correct, n_total)
+        rows.append({
+            "participant_id":     pid,
+            "comparison_pair_tag": tag,
+            "n_trials":           n_total,
+            "n_correct":          n_correct,
+            "p_correct":          round(n_correct / n_total, 3) if n_total > 0 else np.nan,
+            "d_prime":            round(dp, 3) if not np.isnan(dp) else np.nan,
+        })
+
+    df = pd.DataFrame(rows)
+    order_map = {tag: i for i, tag in enumerate(T1_ORDER)}
+    df["_order"] = df["comparison_pair_tag"].map(order_map)
+    return (
+        df.sort_values(["participant_id", "_order"])
+          .drop(columns="_order")
+          .reset_index(drop=True)
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -164,6 +207,13 @@ def main():
     out = REPO_ROOT / "data" / "results" / f"sdt_results{suffix}.csv"
     results.to_csv(out, index=False)
     print(f"\nSaved → {out}")
+
+    cat_results = compute_dprime_by_category(tt)
+    print("\n── d' BY QUESTION CATEGORY (T1, all blocks combined) ──")
+    print(cat_results.to_string(index=False))
+    out_cat = REPO_ROOT / "data" / "results" / f"sdt_by_category{suffix}.csv"
+    cat_results.to_csv(out_cat, index=False)
+    print(f"Saved → {out_cat}")
 
 
 if __name__ == "__main__":
