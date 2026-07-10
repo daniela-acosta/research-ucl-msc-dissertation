@@ -48,6 +48,50 @@ if args.participant:
 else:
     print(f"Showing all participants: {sorted(ct['participant_id'].unique().tolist())}")
 
+# ── Cumulative transition counts from learning phases ─────────────────────────
+# trans_raw: every consecutive (src, dst) pair within each block.
+# tc: cumulative count per (participant, block, src, dst) — so at block B the
+#     count reflects all learning steps from blocks 1 through B.
+_ct_s = ct.sort_values(["participant_id", "block", "step"]).copy()
+_ct_s["next_node"] = _ct_s.groupby(["participant_id", "block"])["node"].shift(-1)
+trans_raw = (
+    _ct_s.dropna(subset=["next_node"])
+    [["participant_id", "block", "node", "next_node"]]
+    .rename(columns={"node": "src", "next_node": "dst"})
+)
+_tc_cnt = (
+    trans_raw.groupby(["participant_id", "block", "src", "dst"])
+    .size().reset_index(name="n_block")
+    .sort_values(["participant_id", "src", "dst", "block"])
+)
+_tc_cnt["n_cumul"] = _tc_cnt.groupby(["participant_id", "src", "dst"])["n_block"].cumsum()
+tc = _tc_cnt[["participant_id", "block", "src", "dst", "n_cumul"]]
+
+# Per-trial cumulative counts for plausible and implausible transitions (T1 only).
+# The candidates CSV has both orderings of optionA/B within each pair_tag, so we
+# can't assume optionA is always the plausible option — use option_a_plausible instead.
+# plausible_is_left = (option_a_plausible == left_is_option_a):
+#   True when optionA is plausible and is on the left, OR optionA is implausible
+#   and is on the right (meaning optionB, the plausible one, is on the left).
+_t1_early = tt[(tt["comparison_type"] == "T1") & (tt["timed_out"] == False)].copy()
+_plaus_left_e = (
+    _t1_early["option_a_plausible"].astype(bool) == _t1_early["left_is_option_a"].astype(bool)
+)
+_t1_early["_plaus_node"]   = _t1_early["option_left"].where(_plaus_left_e,  _t1_early["option_right"])
+_t1_early["_implaus_node"] = _t1_early["option_right"].where(_plaus_left_e, _t1_early["option_left"])
+_t1_early = _t1_early.merge(
+    tc.rename(columns={"src": "base_node", "dst": "_pn", "n_cumul": "trans_plausible"}),
+    left_on=["participant_id", "block", "base_node", "_plaus_node"],
+    right_on=["participant_id", "block", "base_node", "_pn"], how="left"
+).drop(columns="_pn")
+_t1_early["trans_plausible"] = _t1_early["trans_plausible"].fillna(0).astype(int)
+_t1_early = _t1_early.merge(
+    tc.rename(columns={"src": "base_node", "dst": "_in", "n_cumul": "trans_implausible"}),
+    left_on=["participant_id", "block", "base_node", "_implaus_node"],
+    right_on=["participant_id", "block", "base_node", "_in"], how="left"
+).drop(columns="_in")
+_t1_early["trans_implausible"] = _t1_early["trans_implausible"].fillna(0).astype(int)
+
 # Suffix appended to output filenames — blank for combined, participant id for single.
 file_suffix = f"_{args.participant}" if args.participant else ""
 # Title tag for plot supertitles.
@@ -96,6 +140,11 @@ print("\n── TEST (2AFC + confidence) ──")
 print(with_totals(tt_res).to_string(index=False))
 
 # BY QUESTION TYPE (averaged across all participants and blocks)
+_trans_t1_by_cat = (
+    _t1_early.groupby("comparison_pair_tag")
+    .agg(n_plausible=("trans_plausible", "mean"), n_implausible=("trans_implausible", "mean"))
+    .round(2).reset_index()
+)
 qtype_res = (
     tt[tt["timed_out"] == False]
     .groupby(["comparison_type", "category", "comparison_pair_tag"])
@@ -109,6 +158,8 @@ qtype_res = (
     .sort_values("category")
     .rename(columns={"comparison_pair_tag": "pair_tag", "comparison_type": "type",
                      "mean_rt": "rt", "mean_confidence": "confidence"})
+    .merge(_trans_t1_by_cat.rename(columns={"comparison_pair_tag": "pair_tag"}),
+           on="pair_tag", how="left")
 )
 print("\n── BY QUESTION TYPE (all participants, all blocks) ──")
 print(qtype_res.to_string(index=False))
@@ -211,6 +262,22 @@ nb_res = (
 )
 print("\n── BY BASE NODE TYPE (B vs NB) ──")
 print(nb_res.to_string(index=False))
+
+# Node visit counts from learning phase — sanity check for random walk uniformity.
+# Expected: ~13 visits per node (104 total steps / 8 nodes) if walk is uniform.
+node_visit_res = (
+    ct.groupby(["participant_id", "node"])
+    .size().reset_index(name="n_visits")
+    .groupby("node")["n_visits"]
+    .agg(mean="mean", std="std")
+    .round(2)
+    .reset_index()
+    .sort_values("node")
+)
+BOUNDARY = {"B", "D", "E", "G"}
+node_visit_res["type"] = node_visit_res["node"].map(lambda n: "B" if n in BOUNDARY else "NB")
+print("\n── NODE VISIT COUNTS (learning phase, all blocks, expected ≈13 per node) ──")
+print(node_visit_res.to_string(index=False))
 
 # BY BLOCK
 # COVER TASK
@@ -603,6 +670,91 @@ axes_t2[1, 1].legend(title="Category", bbox_to_anchor=(1.01, 1), loc="upper left
 plt.suptitle(f"T2 Trials — RT & Confidence by Category — {title_tag}", y=1.01)
 plt.tight_layout()
 out = f"../data/results/exploration_by_category_T2{file_suffix}.png"
+plt.savefig(out, dpi=150, bbox_inches="tight")
+plt.close()
+subprocess.run(["open", out])
+
+# ── Transition exposure analysis ──────────────────────────────────────────────
+# For each T1 test trial, count how many times the participant saw the specific
+# tested transition (base → plausible) in learning phases up to that block.
+# trans_raw and tc were computed earlier and are reused here.
+
+# Reuse _t1_early (computed above) — already has trans_plausible and trans_implausible.
+# Extend to include timed-out trials for the full T1 set; those rows keep trans = 0.
+t1_exp = tt[tt["comparison_type"] == "T1"].copy()
+_plaus_left = (
+    t1_exp["option_a_plausible"].astype(bool) == t1_exp["left_is_option_a"].astype(bool)
+)
+t1_exp["plausible_node"]   = t1_exp["option_left"].where(_plaus_left,  t1_exp["option_right"])
+t1_exp["implausible_node"] = t1_exp["option_right"].where(_plaus_left, t1_exp["option_left"])
+t1_exp = t1_exp.merge(
+    tc.rename(columns={"src": "base_node", "dst": "_pn", "n_cumul": "trans_plausible"}),
+    left_on=["participant_id", "block", "base_node", "plausible_node"],
+    right_on=["participant_id", "block", "base_node", "_pn"], how="left"
+).drop(columns="_pn")
+t1_exp["trans_plausible"] = t1_exp["trans_plausible"].fillna(0).astype(int)
+t1_exp = t1_exp.merge(
+    tc.rename(columns={"src": "base_node", "dst": "_in", "n_cumul": "trans_implausible"}),
+    left_on=["participant_id", "block", "base_node", "implausible_node"],
+    right_on=["participant_id", "block", "base_node", "_in"], how="left"
+).drop(columns="_in")
+t1_exp["trans_implausible"] = t1_exp["trans_implausible"].fillna(0).astype(int)
+t1_exp["trans_diff"] = t1_exp["trans_plausible"] - t1_exp["trans_implausible"]
+
+# Step 5: print summaries
+trans_freq = (
+    trans_raw.groupby(["participant_id", "src", "dst"])
+    .size().reset_index(name="total_seen")
+    .sort_values(["participant_id", "src", "dst"])
+)
+print("\n── TRANSITION FREQUENCIES (learning phase, all blocks) ──")
+print(trans_freq.to_string(index=False))
+
+print("\n── TRANSITION EXPOSURE DISTRIBUTION (T1 trials, cumulative) ──")
+print(t1_exp[["trans_plausible", "trans_implausible", "trans_diff"]].describe().round(2).to_string())
+
+t1_exp_resp = t1_exp[t1_exp["timed_out"] == False]
+
+trans_acc_p = (
+    t1_exp_resp.groupby("trans_plausible")
+    .agg(n_trials=("accuracy", "count"), mean_accuracy=("accuracy", "mean"))
+    .round(3).reset_index()
+)
+trans_acc_d = (
+    t1_exp_resp.groupby("trans_diff")
+    .agg(n_trials=("accuracy", "count"), mean_accuracy=("accuracy", "mean"))
+    .round(3).reset_index()
+)
+print("\n── ACCURACY BY PLAUSIBLE TRANSITION COUNT (T1, cumulative) ──")
+print(trans_acc_p.to_string(index=False))
+print("\n── ACCURACY BY TRANSITION COUNT DIFFERENCE (plausible − implausible, T1) ──")
+print(trans_acc_d.to_string(index=False))
+
+# Step 6: bar charts
+acc_by_p = (
+    t1_exp_resp.groupby("trans_plausible")["accuracy"].mean().reset_index()
+)
+acc_by_d = (
+    t1_exp_resp.groupby("trans_diff")["accuracy"].mean().reset_index()
+)
+
+fig_trans, (ax_tp, ax_td) = plt.subplots(1, 2, figsize=(14, 5))
+
+sns.barplot(data=acc_by_p, x="trans_plausible", y="accuracy", ax=ax_tp, color=color_acc)
+ax_tp.axhline(0.5, color="black", linestyle="--", linewidth=0.8)
+ax_tp.set_title("Accuracy by Plausible Transition Count (T1)")
+ax_tp.set_xlabel("Times base → plausible seen in learning (cumulative)")
+ax_tp.set_ylabel("Mean Accuracy")
+
+sns.barplot(data=acc_by_d, x="trans_diff", y="accuracy", ax=ax_td, color="slateblue")
+ax_td.axhline(0.5, color="black", linestyle="--", linewidth=0.8)
+ax_td.set_title("Accuracy by Transition Count Difference (T1)")
+ax_td.set_xlabel("Count(plausible) − Count(implausible) seen in learning")
+ax_td.set_ylabel("Mean Accuracy")
+
+plt.suptitle(f"Transition Exposure vs Accuracy — {title_tag}", y=1.01)
+plt.tight_layout()
+out = f"../data/results/exploration_transition_exposure{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
