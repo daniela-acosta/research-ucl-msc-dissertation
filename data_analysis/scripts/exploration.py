@@ -4,6 +4,7 @@ import subprocess
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy import stats
 
 parser = argparse.ArgumentParser(description="Exploratory plots for the graph learning experiment.")
 parser.add_argument(
@@ -336,6 +337,8 @@ fig, (ax_ct, ax_2afc, ax_conf, ax_conf_t1) = plt.subplots(1, 4, figsize=(22, 5))
 ax_ct2 = ax_ct.twinx()
 sns.lineplot(data=ct_res_block, x="block", y="mean_rt",  marker="o", ax=ax_ct,  color=color_rt)
 sns.lineplot(data=ct_res_block, x="block", y="accuracy", marker="o", ax=ax_ct2, color=color_acc)
+for _, g in ct_res_block.groupby("participant_id"):
+    ax_ct2.scatter(g["block"], g["accuracy"], alpha=0.35, s=18, color=color_acc, zorder=2)
 ax_ct.set_ylabel("Mean RT (ms)", color=color_rt)
 ax_ct.tick_params(axis="y", labelcolor=color_rt)
 ax_ct2.set_ylabel("Accuracy", color=color_acc)
@@ -349,6 +352,8 @@ ax_ct.set_xlabel("Block")
 ax_2afc2 = ax_2afc.twinx()
 sns.lineplot(data=tt_res_block, x="block", y="mean_rt",  marker="o", ax=ax_2afc,  color=color_rt)
 sns.lineplot(data=tt_res_block, x="block", y="accuracy", marker="o", ax=ax_2afc2, color=color_acc)
+for _, g in tt_res_block.groupby("participant_id"):
+    ax_2afc2.scatter(g["block"], g["accuracy"], alpha=0.35, s=18, color=color_acc, zorder=2)
 ax_2afc.set_ylabel("Mean RT (ms)", color=color_rt)
 ax_2afc.tick_params(axis="y", labelcolor=color_rt)
 ax_2afc2.set_ylabel("Accuracy (T1 only)", color=color_acc)
@@ -361,6 +366,8 @@ ax_2afc.set_xlabel("Block")
 # Panel 3 — confidence response + confidence RT
 ax_conf2 = ax_conf.twinx()
 sns.lineplot(data=tt_res_block, x="block", y="mean_confidence", marker="o", ax=ax_conf,  color=color_conf)
+for _, g in tt_res_block.groupby("participant_id"):
+    ax_conf.scatter(g["block"], g["mean_confidence"], alpha=0.35, s=18, color=color_conf, zorder=2)
 sns.lineplot(data=tt_res_block, x="block", y="conf_mean_rt",    marker="o", ax=ax_conf2, color=color_crt)
 ax_conf.set_ylabel("Mean Confidence (0–100)", color=color_conf)
 ax_conf.tick_params(axis="y", labelcolor=color_conf)
@@ -374,6 +381,8 @@ ax_conf.set_xlabel("Block")
 # Panel 4 — T1-only confidence by block
 sns.lineplot(data=tt_res_block_t1, x="block", y="mean_confidence", marker="o",
              ax=ax_conf_t1, color=color_conf)
+for _, g in tt_res_block_t1.groupby("participant_id"):
+    ax_conf_t1.scatter(g["block"], g["mean_confidence"], alpha=0.35, s=18, color=color_conf, zorder=2)
 ax_conf_t1.set_ylabel("Mean Confidence (0–100)", color=color_conf)
 ax_conf_t1.tick_params(axis="y", labelcolor=color_conf)
 ax_conf_t1.set_ylim(tt_conf_ylim)
@@ -387,6 +396,35 @@ out = f"../data/results/exploration_by_block{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
+
+# ── Accuracy gain across blocks: significance test (T1 trials) ────────────────
+# Per-participant slope (block → accuracy) via linear regression, then
+# one-sample t-test on the distribution of slopes against zero.
+_t1_blk = (
+    tt[(tt["comparison_type"] == "T1") & (tt["timed_out"] == False)]
+    .groupby(["participant_id", "block"])["accuracy"]
+    .mean().reset_index()
+)
+_slopes = []
+for pid, grp in _t1_blk.groupby("participant_id"):
+    grp = grp.sort_values("block")
+    res = stats.linregress(grp["block"], grp["accuracy"])
+    _slopes.append({
+        "participant_id": pid,
+        "slope":          round(res.slope,    4),
+        "intercept":      round(res.intercept, 3),
+        "r":              round(res.rvalue,    3),
+        "p_within":       round(res.pvalue,   3),
+    })
+_slopes_df = pd.DataFrame(_slopes)
+print("\n── ACCURACY GAIN ACROSS BLOCKS — PER-PARTICIPANT SLOPES (T1) ──")
+print(_slopes_df.to_string(index=False))
+if len(_slopes_df) >= 2:
+    _t, _p = stats.ttest_1samp(_slopes_df["slope"], 0)
+    print(f"\nMean slope = {_slopes_df['slope'].mean():.4f} accuracy/block")
+    print(f"One-sample t-test (H0: slope = 0): t({len(_slopes_df)-1}) = {_t:.3f}, p = {_p:.3f}")
+else:
+    print(f"\nSlope = {_slopes_df['slope'].iloc[0]:.4f} accuracy/block  (n=1, no group test)")
 
 # Split by comparison type
 t1 = tt[tt["comparison_type"] == "T1"].copy()
