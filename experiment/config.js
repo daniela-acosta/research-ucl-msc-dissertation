@@ -80,7 +80,7 @@ const CONFIG = {
     min:             0,
     max:             100,
     labels:          ['Totally guessing', 'Completely confident'],
-    requireMovement: true,
+    requireMovement: false,
     maxResponseTime: 5000
   },
 
@@ -145,12 +145,12 @@ const CONFIG = {
     learning: {
       maxConsecutiveMisses: 3,
       maxMissRatePerBlock:  0.5,
-      maxMissRateWarning:   0.4   // warn once per block when cumulative rate hits this
+      maxMissRateWarning:   0.25   // warn once per block when cumulative rate hits this
     },
     test: {
       maxConsecutiveMisses: 3,
       maxMissRatePerBlock:  0.5,
-      maxMissRateWarning:   0.4
+      maxMissRateWarning:   0.25
     }
   },
 

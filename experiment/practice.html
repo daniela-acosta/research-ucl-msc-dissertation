@@ -206,20 +206,14 @@
             walk: practiceWalk, jsPsych, block: 0, timed: true, giveFeedback: true
           }),
 
-          // ── Step 5: 2AFC intro screen ─────────────────────────────────────
+          // ── Step 5: Transition to 2AFC practice ───────────────────────────
           {
             type:     jsPsychHtmlButtonResponse,
             stimulus: `
               <div class="text-content">
-                <h2>Part 2: Prediction Task</h2>
-                <p>Well done! Now we'll practise the second part of the task.</p>
-                <p>You will see one image at the top and two images side by side below it.
-                   Your job is to choose <strong>which of the two lower images is more likely
-                   to appear after the top one</strong>, based on what you've seen so far.</p>
-                <p><strong>Click</strong> the image you think is more likely.</p>
-                <p>After each choice you'll also be asked to rate how confident you felt
-                   on a slider from <em>totally guessing</em> to <em>completely confident</em>.</p>
-                <p>No time limit yet — take your time.</p>
+                <h2>Part 2</h2>
+                <p>Well done! Now let's practice the second part. No time limit yet — take
+                   your time.</p>
               </div>`,
             choices: ['Start']
           },

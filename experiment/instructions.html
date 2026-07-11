@@ -28,15 +28,14 @@
           <h2>Welcome</h2>
           <p>In this study you will view a series of images and make quick judgements about
              each one.</p>
-          <p>The study consists of several rounds, each made up of two parts: a
-             <strong>symmetry task</strong> and a <strong>prediction task</strong>. We will explain
+          <p>The study consists of several rounds, each made up of two parts. We will explain
              both before you begin.</p>
           <p>The study takes approximately 35–40 minutes. Please make sure you are in a quiet
              place where you can focus without interruption.</p>
         </div>`,
 
         `<div class="text-content">
-          <h2>Part 1: Symmetry Task</h2>
+          <h2>Part 1</h2>
           <p>Images will appear on screen one at a time. Your job is to judge whether each
              image is <strong>symmetric</strong> — that is, whether it looks roughly the same
              on both sides.</p>
@@ -47,15 +46,19 @@
         </div>`,
 
         `<div class="text-content">
-          <h2>Part 2: Prediction Task</h2>
+          <h2>Part 2</h2>
           <p>At the end of each round you will be shown a series of choice questions. Each
              question shows one image at the top and two images below it. Your job is to judge
              <strong>which of the two lower images is more likely to have appeared after the
              top image</strong> during the sequence you just viewed.</p>
           <p><strong>Click</strong> the image you choose. You have
-             ${CONFIG.testMaxResponseTime / 1000} seconds to respond.</p>
+             ${CONFIG.testMaxResponseTime / 1000} seconds to respond. If no response is given
+             in time, the question will move on automatically and count as a missed response.</p>
           <p>After each choice you will be asked to rate how confident you felt on a slider
-             from <em>totally guessing</em> to <em>completely confident</em>.</p>
+             from <em>totally guessing</em> to <em>completely confident</em>. You have
+             ${CONFIG.confidence.maxResponseTime / 1000} seconds to move the slider —
+             if no rating is given in time, the confidence question will be skipped
+             automatically.</p>
         </div>`,
 
         `<div class="text-content">
@@ -65,10 +68,24 @@
         </div>`,
 
         `<div class="text-content">
+          <h2>Important: staying in the study</h2>
+          <p>It is important that you respond on every trial. The study monitors your
+             response rate throughout.</p>
+          <p>If you miss <strong>${CONFIG.exclusion.learning.maxConsecutiveMisses} or more
+             responses in a row</strong>, or <strong>more than
+             ${Math.round(CONFIG.exclusion.learning.maxMissRateWarning * 100)}% of responses
+             in a single round</strong>, you will receive a warning on screen. If misses
+             continue after the warning, the study will end automatically and you will not
+             be able to complete it.</p>
+          <p>Please make sure you are in a quiet place with no distractions, and respond on
+             every trial — even if you are unsure.</p>
+        </div>`,
+
+        `<div class="text-content">
           <h2>Ready to begin?</h2>
           <p>You will now complete a short practice round to get familiar with both tasks.
-             The practice uses different images than the main study and will not affect your
-             results.</p>
+             The practice uses different images than the main study and your responses
+             during practice are <strong>not recorded or analyzed</strong>.</p>
           <p>You will receive feedback during practice. Take your time — the main study will
              begin once the practice is complete.</p>
           <p>Click <strong>Next</strong> when you are ready.</p>

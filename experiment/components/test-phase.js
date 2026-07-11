@@ -148,14 +148,18 @@ const TestPhase = (function () {
           data: { trial_type_label: 'confidence' },
           min:              CONFIG.confidence.min,
           max:              CONFIG.confidence.max,
-          start:            50,
+          start:            CONFIG.confidence.min,
           step:             1,
           labels:           CONFIG.confidence.labels,
           require_movement: CONFIG.confidence.requireMovement,
           trial_duration:   CONFIG.confidence.maxResponseTime,
-          on_start: function (trial) {
-            trial.start = Math.floor(Math.random() * (CONFIG.confidence.max - CONFIG.confidence.min + 1))
-                          + CONFIG.confidence.min;
+          on_load: function () {
+            var slider = document.querySelector('input[type="range"]');
+            if (slider) {
+              slider.value = Math.floor(
+                Math.random() * (CONFIG.confidence.max - CONFIG.confidence.min + 1)
+              ) + CONFIG.confidence.min;
+            }
           },
           on_finish: function (data) {
             // Write confidence back into the preceding 2AFC trial's data row.
