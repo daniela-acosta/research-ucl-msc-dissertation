@@ -65,7 +65,7 @@
         const incorrectFeedback = {
           timeline: [{
             type:           jsPsychHtmlKeyboardResponse,
-            stimulus:       '<p class="feedback-incorrect">Not quite — please try again.</p>',
+            stimulus:       '<p class="feedback-incorrect">Not quite. Please try again.</p>',
             choices:        'NO_KEYS',
             trial_duration: 1000
           }],
@@ -141,7 +141,7 @@
             <p>Press <strong>${CONFIG.coverTask.symmetricLabel}</strong> if the image looks
                the same on both sides, or
                <strong>${CONFIG.coverTask.notSymmetricLabel}</strong> if it does not.</p>
-            <p>Let's practice — take your time on the first run.</p>
+            <p>Let's practice. Take your time on the first run.</p>
           </div>`
       });
       timeline.push(...coverCheck.nodes);
@@ -171,7 +171,7 @@
                <strong>which of the two lower images is more likely to follow the top image</strong>.</p>
             <p>Press <strong>${CONFIG.twoAFC.leftLabel}</strong> for the left image, or
                <strong>${CONFIG.twoAFC.rightLabel}</strong> for the right image.</p>
-            <p>Let's practice — no time limit yet.</p>
+            <p>Let's practice. No time limit yet.</p>
           </div>`
       });
       timeline.push(...twoAFCCheck.nodes);
@@ -195,10 +195,10 @@
               <div class="text-content">
                 <h2>Now with a time limit</h2>
                 <p>Good work! This time the images will disappear after
-                   ${CONFIG.stimulusDuration / 1000} seconds — just like in the real task.</p>
+                   ${CONFIG.stimulusDuration / 1000} seconds, just like in the real task.</p>
                 <p>Try to respond before each image disappears.</p>
-                <p>Only your <strong>first keypress</strong> is recorded —
-                   pressing a second key will not change your response.</p>
+                <p>Only your <strong>first keypress</strong> is recorded.
+                   Pressing a second key will not change your response.</p>
               </div>`,
             choices: ['Start']
           },
@@ -212,8 +212,7 @@
             stimulus: `
               <div class="text-content">
                 <h2>Part 2</h2>
-                <p>Well done! Now let's practice the second part. No time limit yet — take
-                   your time.</p>
+                <p>Well done! Now let's practice the second part. No time limit.</p>
               </div>`,
             choices: ['Start']
           },
@@ -237,7 +236,7 @@
               <div class="text-content">
                 <h2>Now with a time limit</h2>
                 <p>This time you will have ${CONFIG.testMaxResponseTime / 1000} seconds to respond
-                   on each question — the same as in the real task.</p>
+                   on each question, the same as in the real task.</p>
               </div>`,
             choices: ['Start']
           },
