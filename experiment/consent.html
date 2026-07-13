@@ -18,18 +18,42 @@
 
     <script>
       jatos.onLoad(async function () {
+        // Capture Prolific URL params first so we can gate on them before running the timeline.
+        const prolific = Utils.getProlificParams();
+        jatos.studySessionData[CONFIG.sessionKeys.prolificPID] = prolific.pid;
+        jatos.studySessionData[CONFIG.sessionKeys.studyID]     = prolific.studyId;
+        jatos.studySessionData[CONFIG.sessionKeys.sessionID]   = prolific.sessionId;
+
+        console.log('[consent] jatos.workerType =', jatos.workerType, '| prolific.pid =', prolific.pid || '(empty)');
+        const isJatosAdmin = ['Jatos', 'Preview'].includes(jatos.workerType);
+        const isPreview    = prolific.pid === CONFIG.previewPID || isJatosAdmin;
+        const pidMissing   = !prolific.pid && !isPreview;
+        console.log('[consent] isJatosAdmin =', isJatosAdmin, '| isPreview =', isPreview, '| pidMissing =', pidMissing);
+        jatos.studySessionData.previewMode = isPreview;
+
         const jsPsych = initJsPsych({
           on_finish: function () {
-            jatos.startNextComponent();
+            if (!pidMissing) jatos.startNextComponent();
           },
         });
 
-        // Capture Prolific URL params and store in studySessionData
-        const prolific = Utils.getProlificParams();
-        jatos.studySessionData[CONFIG.sessionKeys.prolificPID] = prolific.pid;
-        jatos.studySessionData[CONFIG.sessionKeys.studyID] = prolific.studyId;
-        jatos.studySessionData[CONFIG.sessionKeys.sessionID] =
-          prolific.sessionId;
+        // If PID is missing and this is not a preview run, show an error and abort.
+        if (pidMissing) {
+          jsPsych.run([{
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `
+              <div class="text-content">
+                <p>It looks like you did not access this study through Prolific.</p>
+                <p>Please return to Prolific and click the study link to begin. If you believe
+                   this is an error, please contact the researcher.</p>
+              </div>`,
+            choices: ['OK'],
+            on_finish: function () {
+              jatos.abortStudy('Missing Prolific PID — participant did not arrive via Prolific.');
+            }
+          }]);
+          return;
+        }
 
         // Assign stimulus config (3 or 4) and node→fractal mapping.
         // Balanced across participants via the JATOS Batch Session.

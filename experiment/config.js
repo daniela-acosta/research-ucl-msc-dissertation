@@ -135,6 +135,9 @@ const CONFIG = {
 
   // --- Prolific ---
   prolificCompletionURL: 'PLACEHOLDER_COMPLETION_URL',
+  // Secret PID value that bypasses the missing-PID check and skips the Prolific
+  // completion redirect at the end. Use ?PROLIFIC_PID=PREVIEW in the URL to test.
+  previewPID: 'PREVIEW',
 
   // --- Exclusion criteria ---
   // Participants are excluded (study aborted) if either criterion is met during the

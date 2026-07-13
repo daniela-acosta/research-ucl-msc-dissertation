@@ -75,9 +75,15 @@
 
   <script>
     jatos.onLoad(function () {
+      const isPreview = jatos.studySessionData.previewMode === true;
+
       const jsPsych = initJsPsych({
         on_finish: function () {
-          jatos.endStudyAndRedirect(CONFIG.prolificCompletionURL);
+          if (isPreview) {
+            jatos.endStudy();
+          } else {
+            jatos.endStudyAndRedirect(CONFIG.prolificCompletionURL);
+          }
         }
       });
 
@@ -169,7 +175,7 @@
                  Prof. Megan Peters at
                  <a href="mailto:megan.peters@ucl.ac.uk">megan.peters@ucl.ac.uk</a>.</p>
             </div>`,
-          choices: ['Finish and claim reward']
+          choices: [isPreview ? 'Finish (preview mode)' : 'Finish and claim reward']
         }
 
       ];

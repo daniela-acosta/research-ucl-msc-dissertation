@@ -15,10 +15,12 @@
   window.jatos = {
 
     // --- Metadata ---
-    workerId:    'local-worker-001',
-    studyId:     'local-study',
-    componentId: 'local-component',
-    version:     'mock',
+    workerId:           'local-worker-001',
+    studyId:            'local-study',
+    componentId:        'local-component',
+    version:            'mock',
+    workerType:         'Jatos',   // simulates running from JATOS admin
+    urlQueryParameters: {},              // populated by JATOS from the study URL in production
 
     // --- Shared session data ---
     // Persists across components in a real study run; resets on reload locally.

@@ -145,14 +145,20 @@ const Utils = (function () {
     return Array.from({ length }, (_, i) => nodes[i % nodes.length]);
   }
 
-  // Reads Prolific URL parameters appended to the study link.
+  // Reads Prolific URL parameters.
+  // On JATOS, params come via jatos.urlQueryParameters (set from the study entry URL).
+  // Falls back to window.location.search for local development.
   // Returns { pid, studyId, sessionId } — empty strings if not present.
   function getProlificParams() {
-    const params = new URLSearchParams(window.location.search);
+    const jatosParams = (typeof jatos !== 'undefined' && jatos.urlQueryParameters) || {};
+    const urlParams   = new URLSearchParams(window.location.search);
+    function get(key) {
+      return jatosParams[key] || urlParams.get(key) || '';
+    }
     return {
-      pid:       params.get('PROLIFIC_PID') || '',
-      studyId:   params.get('STUDY_ID')     || '',
-      sessionId: params.get('SESSION_ID')   || ''
+      pid:       get('PROLIFIC_PID'),
+      studyId:   get('STUDY_ID'),
+      sessionId: get('SESSION_ID')
     };
   }
 
