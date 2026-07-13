@@ -141,6 +141,7 @@ const TestPhase = (function () {
 
       // --- Confidence judgement (skipped if 2AFC timed out) ---
       if (collectConfidence) {
+        let _confSliderStart = null;
         timeline.push({
           timeline: [{
           type:             jsPsychHtmlSliderResponse,
@@ -156,22 +157,24 @@ const TestPhase = (function () {
           on_load: function () {
             var slider = document.querySelector('input[type="range"]');
             if (slider) {
-              slider.value = Math.floor(
+              _confSliderStart = Math.floor(
                 Math.random() * (CONFIG.confidence.max - CONFIG.confidence.min + 1)
               ) + CONFIG.confidence.min;
+              slider.value = _confSliderStart;
             }
           },
           on_finish: function (data) {
-            // Write confidence back into the preceding 2AFC trial's data row.
+            data.slider_start = _confSliderStart;
             const twoAFCTrial = jsPsych.data
               .get()
               .filter({ trial_type_label: 'test' })
               .last(1)
               .values()[0];
             if (twoAFCTrial) {
-              twoAFCTrial.confidence_response  = data.response;
-              twoAFCTrial.confidence_rt        = data.rt;
-              twoAFCTrial.confidence_timed_out = data.response === null;
+              twoAFCTrial.confidence_response      = data.response;
+              twoAFCTrial.confidence_rt            = data.rt;
+              twoAFCTrial.confidence_timed_out     = data.response === null;
+              twoAFCTrial.confidence_slider_start  = _confSliderStart;
             }
           }
           }],

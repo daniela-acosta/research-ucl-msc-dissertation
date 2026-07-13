@@ -109,6 +109,7 @@
       // ── Build timeline ──────────────────────────────────────────────────────
       // Fullscreen and comprehension checks run once only — they sit outside the
       // repeat loop so closure state doesn't need to reset between repeats.
+      let shouldAbort = false;
       const practiceImagePaths = CONFIG.practiceNodes.map(n => Utils.getStimulusPath(n));
 
       const timeline = [
@@ -162,7 +163,7 @@
         correctIndex: 0,
         onBothFailed: function () {
           if (!coverCheck.passed()) {
-            jatos.abortStudy('Participant failed both comprehension checks after 2 attempts each.');
+            shouldAbort = true;
           }
         },
         revealHtml: `
@@ -175,6 +176,29 @@
           </div>`
       });
       timeline.push(...twoAFCCheck.nodes);
+
+      // Abort screen — shown if both comprehension checks failed twice each.
+      timeline.push({
+        timeline: [{
+          type:     jsPsychHtmlButtonResponse,
+          stimulus: `
+            <div class="text-content">
+              <p>Unfortunately, it looks like there may be some difficulty understanding the tasks.
+                 The study has ended.</p>
+              <p>Please <strong>return your submission on Prolific</strong> by clicking
+                 "Stop without completing" on the Prolific website.</p>
+              <p>If you have any questions, please contact the researcher.</p>
+            </div>`,
+          choices:  ['OK'],
+          on_finish: function () {
+            if (typeof jatos !== 'undefined') {
+              jatos.abortStudy('Participant failed both comprehension checks after 2 attempts each.');
+            }
+            jsPsych.endExperiment();
+          }
+        }],
+        conditional_function: function () { return shouldAbort; }
+      });
 
       // ── Practice loop ────────────────────────────────────────────────────────
       // Steps 3–7 repeat if the participant chooses "Repeat practice".

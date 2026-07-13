@@ -36,6 +36,13 @@ T1_ORDER = [t for t in CAT_ORDER if t in {
 ct = pd.read_csv("../data/results/learning_trials.csv")
 tt = pd.read_csv("../data/results/test_trials.csv")
 
+# Older data collections lack confidence_slider_start (logged from a later build).
+# Fall back to 50 (slider midpoint) so downstream analyses degrade gracefully.
+if "confidence_slider_start" not in tt.columns:
+    tt["confidence_slider_start"] = 50
+else:
+    tt["confidence_slider_start"] = tt["confidence_slider_start"].fillna(50)
+
 if args.participant:
     if args.participant not in ct["participant_id"].values and \
        args.participant not in tt["participant_id"].values:
@@ -139,6 +146,84 @@ print(with_totals(ct_res).to_string(index=False))
 
 print("\n── TEST (2AFC + confidence) ──")
 print(with_totals(tt_res).to_string(index=False))
+
+# ── RT coefficient of variation (SD / mean) per participant ──────────────────
+# CV flags abnormal response patterns: very low CV suggests button-mashing
+# (implausibly consistent RTs); very high CV suggests disengagement.
+_ct_rt = (
+    ct[ct["responded"] == True]
+    .groupby("participant_id")["cover_rt"]
+    .agg(mean_rt="mean", sd_rt="std")
+    .round(1)
+    .reset_index()
+)
+_ct_rt["cv"] = (_ct_rt["sd_rt"] / _ct_rt["mean_rt"]).round(3)
+
+_tt_rt = (
+    tt[tt["timed_out"] == False]
+    .groupby("participant_id")["rt"]
+    .agg(mean_rt="mean", sd_rt="std")
+    .round(1)
+    .reset_index()
+)
+_tt_rt["cv"] = (_tt_rt["sd_rt"] / _tt_rt["mean_rt"]).round(3)
+
+_conf_rt = (
+    tt[tt["confidence_timed_out"] == False]
+    .groupby("participant_id")["confidence_rt"]
+    .agg(mean_rt="mean", sd_rt="std")
+    .round(1)
+    .reset_index()
+)
+_conf_rt["cv"] = (_conf_rt["sd_rt"] / _conf_rt["mean_rt"]).round(3)
+
+rt_cv = (
+    _ct_rt.rename(columns={"mean_rt": "ct_mean",   "sd_rt": "ct_sd",   "cv": "ct_cv"})
+    .merge(
+        _tt_rt.rename(columns={"mean_rt": "tt_mean", "sd_rt": "tt_sd", "cv": "tt_cv"}),
+        on="participant_id", how="outer"
+    )
+    .merge(
+        _conf_rt.rename(columns={"mean_rt": "conf_mean", "sd_rt": "conf_sd", "cv": "conf_cv"}),
+        on="participant_id", how="outer"
+    )
+)
+print("\n── RT COEFFICIENT OF VARIATION (SD / mean) ──")
+print("  ct = cover task | tt = 2AFC | conf = confidence slider (timed-out trials excluded)")
+print(with_totals(rt_cv).to_string(index=False))
+
+# ── Confidence response vs slider start position correlation ─────────────────
+# A high correlation would suggest participants are anchoring on the random
+# start rather than genuinely rating their confidence.
+# Note: data collected before slider_start logging use a fallback of 50 —
+# those participants will show near-zero correlation by construction.
+_conf_rows = tt[
+    (tt["timed_out"] == False) &
+    tt["confidence_response"].notna() &
+    tt["confidence_slider_start"].notna()
+].copy()
+
+_conf_corr_rows = []
+for pid, grp in _conf_rows.groupby("participant_id"):
+    if len(grp) >= 3:
+        r, p = stats.pearsonr(grp["confidence_slider_start"], grp["confidence_response"])
+        _conf_corr_rows.append({
+            "participant_id": pid,
+            "n":              len(grp),
+            "r":              round(r, 3),
+            "p":              round(p, 3),
+        })
+_conf_corr_df = pd.DataFrame(_conf_corr_rows)
+print("\n── CONFIDENCE RESPONSE vs SLIDER START (Pearson r, per participant) ──")
+if len(_conf_corr_df) > 0:
+    print(with_totals(_conf_corr_df).to_string(index=False))
+    if len(_conf_rows) >= 3:
+        r_all, p_all = stats.pearsonr(
+            _conf_rows["confidence_slider_start"], _conf_rows["confidence_response"]
+        )
+        print(f"\nPooled across all participants: r = {r_all:.3f}, p = {p_all:.3f}  (n = {len(_conf_rows)})")
+else:
+    print("  Not enough data (need ≥ 3 confidence responses per participant).")
 
 # BY QUESTION TYPE (averaged across all participants and blocks)
 _trans_t1_by_cat = (
