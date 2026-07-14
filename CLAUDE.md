@@ -380,22 +380,63 @@ duplicate trial logic between components — parameterise it.
 
 ## Recruitment and Prolific Integration
 
-- Participants are recruited via **Prolific**
+- Participants are recruited via **Prolific** using a **General Single** worker link
 - Prolific appends three URL parameters when a participant clicks the study link:
-  `PROLIFIC_PID`, `STUDY_ID`, `SESSION_ID` — capture all three at study start and
-  store them with the data
-- At the end of the debrief component, redirect to the Prolific **completion URL**
-  so participants are automatically credited
-- The completion URL is a configurable parameter (do not hardcode it)
+  `PROLIFIC_PID`, `STUDY_ID`, `SESSION_ID` — read via `jatos.urlQueryParameters`
+  (falls back to `window.location.search` for local dev)
+- All three are written to `jatos.studySessionData` AND submitted as the first result
+  data entry in `consent.html`, so the JATOS record is linkable to Prolific even if
+  the participant drops out before completing any trials
+- Three distinct Prolific completion paths are supported (see table below)
+- Completion URLs are configurable in `config.js` — do not hardcode them
 
----
+### Preview / admin mode
 
-## Dropout Handling
+The full flow can be tested without a real Prolific session. `previewMode` is set to
+`true` in `jatos.studySessionData` when any of the following is detected at consent:
+
+- `jatos.workerType` is `'Jatos'` (JATOS admin "Run" button) or `'Preview'`
+- `PROLIFIC_PID` URL parameter equals `CONFIG.previewPID` (`'PREVIEW'`)
+
+In preview mode `Utils.endStudyRoute()` calls `jatos.endStudy()` instead of
+`jatos.endStudyAndRedirect()`, and the debrief button reads "Finish (preview mode)".
+
+### Completion paths
+
+All exits call `Utils.endStudyRoute(url)` which respects preview mode automatically.
+The Prolific redirect URL for each path is configured in `config.js`.
+
+| Exit type | Trigger | Code shown | Config key | Prolific action | Payment |
+|-----------|---------|-----------|-----------|-----------------|---------|
+| **Full completion** | Participant finishes debrief | `COMPLETE` | `prolificCompletionURL` | Awaiting review (manual approve) | Full reward |
+| **Declined consent** | Clicks "I do not wish to participate" on consent form | `SCREENOUT_COMPREHENSION` | `prolificScreenOutURL` | Screen-out (auto) | Screen-out reward |
+| **Vision eligibility fail** | Reports uncorrected visual impairment in demographics | `SCREENOUT_COMPREHENSION` | `prolificScreenOutURL` | Screen-out (auto) | Screen-out reward |
+| **Comprehension check fail** | Fails both comprehension checks (cover AND 2AFC) twice each in practice | `SCREENOUT_COMPREHENSION` | `prolificScreenOutURL` | Screen-out (auto) | Screen-out reward |
+| **Attention fail** | Misses 3+ consecutive trials or >50% in a block (learning or test phase) | `EARLY_EXIT_ATTENTION` | `prolificAttentionExitURL` | Awaiting review (manual) | Prorated (manual) |
+| **Missing PID** | Arrived without Prolific URL params and not a preview/admin worker | — | — | Abort (`jatos.abortStudy`), no redirect | None |
+
+The three completion codes (`COMPLETE`, `SCREENOUT_COMPREHENSION`, `EARLY_EXIT_ATTENTION`)
+must be configured identically in the Prolific study creation flow. The Prolific redirect
+URL for each action is then pasted into the corresponding `config.js` key.
+
+**Payment notes:**
+- All five redirecting exits are paid — none are grounds for rejection
+- `SCREENOUT_COMPREHENSION` exits auto-process via Prolific's native screen-out at a
+  fixed small reward set when the study is created
+- `COMPLETE` and `EARLY_EXIT_ATTENTION` both land in "Awaiting review" for manual approval
+  (UCL lab policy is to manually approve all completions)
+- `EARLY_EXIT_ATTENTION` pay is prorated based on which block the participant reached
+  (logged as `exit_block` in the JATOS result data for that component)
+- Analysis-stage exclusions (RT CV, confidence-slider correlation, etc.) are entirely
+  separate from payment — they affect whether data is used, not whether the participant is paid
 
 ### Dropout
-- No special recovery for incomplete participants — they are excluded from analysis
+
+- No special recovery for incomplete participants who close the browser mid-task —
+  they are excluded from analysis
 - JATOS records partial data automatically; incomplete runs are identifiable by absence
-  of the debrief component's result data
+  of the debrief component's result data, and linkable to Prolific via the PID written
+  at the start of consent
 
 ---
 
@@ -433,31 +474,16 @@ for test) — this prevents a single early miss from producing a misleading 100%
 
 ### What happens on exclusion
 
-1. A screen is shown with the exclusion message and an **OK button** (participant must acknowledge)
-2. On click: `jatos.abortStudy(reason)` is called — JATOS marks the result as **ABORTED**
-   and records the reason string
-3. `jsPsych.endExperiment()` is called immediately after — stops the jsPsych timeline so
-   no further stimuli can appear while JATOS navigates away
-4. The participant is **not** redirected to the Prolific completion URL
-
-### Prolific side effects
-
-Because the completion URL is never reached, Prolific treats the submission as
-incomplete. The participant's submission stays active until it times out or they return it
-manually. They will **not** be paid automatically.
-
-**Recommended handling:**
-- The exclusion screen message should instruct participants to return their submission on
-  Prolific ("Please return your submission on Prolific")
-- On the researcher side, manually review ABORTED results and decide whether to approve
-  partial payment as a goodwill gesture (common practice for attention-check exclusions)
-- Do **not** use the Prolific rejection flow for exclusions based on attention alone —
-  this can result in disputes; use "return submission" instructions instead
-
-The exclusion screen text is finalised and reads:
-*"The study has ended because too many responses were missed. Please **return your
-submission on Prolific** by clicking 'Stop without completing' on the Prolific website.
-If you have any questions, please contact the researcher."*
+1. A screen is shown with the `EARLY_EXIT_ATTENTION` completion code and an **OK button**
+   (participant must acknowledge)
+2. On click:
+   - Exit data is submitted: `{ exit_type: 'attention_fail', exit_phase: 'learning'|'test', exit_block: N }`
+   - `Utils.endStudyRoute(CONFIG.prolificAttentionExitURL)` is called — redirects the
+     participant to the Prolific **awaiting-review** URL (or calls `jatos.endStudy()` in
+     preview mode)
+   - `jsPsych.endExperiment()` stops the timeline
+3. The participant is redirected to Prolific with the `EARLY_EXIT_ATTENTION` code; their
+   submission lands in the **Awaiting review** state for manual researcher action
 
 ---
 

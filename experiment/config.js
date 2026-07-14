@@ -83,7 +83,7 @@ const CONFIG = {
     min:             0,
     max:             100,
     labels:          ['Totally guessing', 'Completely confident'],
-    requireMovement: false,
+    requireMovement: true,
     maxResponseTime: 5000
   },
 

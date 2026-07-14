@@ -12,6 +12,7 @@
   <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.2.0"></script>
   <script src="config.js"></script>
+  <script src="components/utils.js"></script>
 
   <script>
     jatos.onLoad(function () {
@@ -192,13 +193,15 @@
                 <p>Thank you for your interest in this study.</p>
                 <p>Unfortunately, normal or corrected-to-normal vision is required to participate,
                    and you are therefore not eligible to take part.</p>
-                <p>Please <strong>return your submission on Prolific</strong> by clicking
-                   "Stop without completing" on the Prolific website.</p>
+                <p>Your completion code is:<br>
+                   <strong style="font-size:1.3em;letter-spacing:2px;">${CONFIG.completionCodes.screenOutComprehension}</strong></p>
+                <p>You will be redirected to Prolific automatically. If not, please return to
+                   Prolific and enter the code above.</p>
               </div>`,
             choices: ['OK'],
             on_finish: function () {
               exclusionTriggered = true;
-              jatos.abortStudy('Participant does not meet vision eligibility criteria.');
+              Utils.endStudyRoute(CONFIG.prolificScreenOutURL);
               jsPsych.endExperiment();
             }
           }],

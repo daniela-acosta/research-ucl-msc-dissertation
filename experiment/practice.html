@@ -44,7 +44,7 @@
       //
       // onBothFailed (optional): called after 2nd failed attempt. Use to abort
       // the study when a second check also fails.
-      function buildCheck({ questionHtml, choices, correctIndex, revealHtml, onBothFailed }) {
+      function buildCheck({ questionHtml, choices, correctIndex, revealHtml, onBothFailed, canReveal = null }) {
         let attempts = 0;
         let _passed  = false;
 
@@ -90,14 +90,16 @@
           conditional_function: function () { return _passed; }
         };
 
-        // Reveal the correct answer only if both attempts failed.
+        // Reveal the correct answer only if both attempts failed and canReveal allows it.
         const revealNode = {
           timeline: [{
             type:     jsPsychHtmlButtonResponse,
             stimulus: revealHtml,
             choices:  ['OK, I understand']
           }],
-          conditional_function: function () { return !_passed; }
+          conditional_function: function () {
+            return !_passed && (!canReveal || canReveal());
+          }
         };
 
         return {
@@ -166,6 +168,7 @@
             shouldAbort = true;
           }
         },
+        canReveal: function () { return !shouldAbort; },
         revealHtml: `
           <div class="text-content">
             <p>The correct answer is:

@@ -234,14 +234,14 @@
               stimulus: `
                 <div class="text-content">
                   <p>Thank you for your time. You have chosen not to participate.</p>
-                  <p>Please <strong>return your submission on Prolific</strong> by clicking
-                     "Stop without completing" on the Prolific website.</p>
+                  <p>Your completion code is:<br>
+                     <strong style="font-size:1.3em;letter-spacing:2px;">${CONFIG.completionCodes.screenOutComprehension}</strong></p>
+                  <p>You will be redirected to Prolific automatically. If not, please return to
+                     Prolific and enter the code above.</p>
                 </div>`,
               choices:  ['OK'],
               on_finish: function () {
-                if (typeof jatos !== 'undefined') {
-                  jatos.abortStudy('Participant declined consent.');
-                }
+                Utils.endStudyRoute(CONFIG.prolificScreenOutURL);
                 jsPsych.endExperiment();
               }
             }],
