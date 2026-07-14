@@ -24,6 +24,15 @@
         jatos.studySessionData[CONFIG.sessionKeys.studyID]     = prolific.studyId;
         jatos.studySessionData[CONFIG.sessionKeys.sessionID]   = prolific.sessionId;
 
+        // Write PID to result data immediately so the JATOS record is linkable to Prolific
+        // even if the participant drops out before completing any trials.
+        jatos.submitResultData(JSON.stringify({
+          prolific_pid: prolific.pid,
+          study_id:     prolific.studyId,
+          session_id:   prolific.sessionId,
+          timestamp:    new Date().toISOString(),
+        }));
+
         console.log('[consent] jatos.workerType =', jatos.workerType, '| prolific.pid =', prolific.pid || '(empty)');
         const isJatosAdmin = ['Jatos', 'Preview'].includes(jatos.workerType);
         const isPreview    = prolific.pid === CONFIG.previewPID || isJatosAdmin;
