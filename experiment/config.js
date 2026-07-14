@@ -63,17 +63,17 @@ const CONFIG = {
   // --- Block structure ---
   numBlocks:         4,
   questionsPerBlock: 36,
-  walkLength:        5,   // TESTING — reset to 48 before deployment
+  walkLength:        48,
 
   // Limit test-phase questions per block for fast testing. Set to null for full run.
-  testQuestionsLimit: 2,  // TESTING — set to null before deployment
+  testQuestionsLimit: null,
 
   // --- Breaks ---
   breakDuration: 180,   // seconds; max rest time between blocks before auto-advance
 
   // --- Practice ---
   practiceFeedbackDuration:  2500, // ms; how long feedback is shown after each practice trial
-  practiceWalkLength:        5,  // same as main task; adjust here to change
+  practiceWalkLength:        5,
   practiceQuestionsPerBlock: 3,   // placeholder — update when practice questions are defined
 
   // --- Confidence judgement ---
@@ -126,12 +126,10 @@ const CONFIG = {
 
   // --- Random walk validation ---
   // Walks that fail any criterion are discarded and regenerated at study start.
-  // TESTING: all set to permissive values so short walks pass immediately.
-  // Reset to: minNodeAppearances: 3, maxCommunityFraction: 2/3, maxNodeFraction: 1/5
   walkValidation: {
-    minNodeAppearances:   0,
-    maxCommunityFraction: 1,
-    maxNodeFraction:      1,
+    minNodeAppearances:   3,
+    maxCommunityFraction: 2/3,
+    maxNodeFraction:      1/5,
   },
 
   // --- Data / counterbalancing ---

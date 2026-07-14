@@ -615,7 +615,7 @@ All values live in the central config object — do not hardcode them in trial l
 |-----------|-------|-------|
 | `stimulusDuration` | 2000 ms | Stimulus display including cover task response window |
 | `interStimulusInterval` | 200 ms | Blank screen between learning phase steps (no fixation cross) |
-| `walkLength` | 26 | Number of steps per learning phase block (main task) — **currently set to 5 in config.js for local testing; reset to 26 before deployment** |
+| `walkLength` | 48 | Number of steps per learning phase block (main task) |
 | `practiceWalkLength` | 26 | Same as main task for now; adjust in config to change |
 | `testMaxResponseTime` | 3000 ms | Max time to respond in 2AFC; record timeout if no response |
 | `numBlocks` | 4 | Number of learning + test block pairs |
