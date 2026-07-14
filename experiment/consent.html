@@ -241,6 +241,7 @@
                 </div>`,
               choices:  ['OK'],
               on_finish: function () {
+                jatos.submitResultData(JSON.stringify({ exit_type: 'declined_consent' }));
                 Utils.endStudyRoute(CONFIG.prolificScreenOutURL);
                 jsPsych.endExperiment();
               }

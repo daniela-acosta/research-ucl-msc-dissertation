@@ -201,6 +201,7 @@
             choices: ['OK'],
             on_finish: function () {
               exclusionTriggered = true;
+              jatos.submitResultData(JSON.stringify({ exit_type: 'vision_screenout' }));
               Utils.endStudyRoute(CONFIG.prolificScreenOutURL);
               jsPsych.endExperiment();
             }

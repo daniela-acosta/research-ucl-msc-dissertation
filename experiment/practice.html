@@ -196,6 +196,7 @@
             </div>`,
           choices:  ['OK'],
           on_finish: function () {
+            jatos.submitResultData(JSON.stringify({ exit_type: 'comprehension_fail' }));
             Utils.endStudyRoute(CONFIG.prolificScreenOutURL);
             jsPsych.endExperiment();
           }

@@ -178,7 +178,10 @@
                  <strong style="font-size:1.3em;letter-spacing:2px;">${CONFIG.completionCodes.complete}</strong><br>
                  <span style="font-size:0.85em;color:#888;">You will be redirected automatically when you click the button below.</span></p>
             </div>`,
-          choices: [isPreview ? 'Finish (preview mode)' : 'Finish and claim your reward']
+          choices: [isPreview ? 'Finish (preview mode)' : 'Finish and claim your reward'],
+          on_finish: function () {
+            jatos.submitResultData(JSON.stringify({ exit_type: 'completed' }));
+          }
         }
 
       ];

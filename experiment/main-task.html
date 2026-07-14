@@ -32,6 +32,7 @@
     jatos.onLoad(async function () {
       const jsPsych = initJsPsych({
         on_finish: function () {
+          if (jatos.studySessionData.earlyExit) return;
           jatos.submitResultData(jsPsych.data.get().json(), jatos.startNextComponent);
         }
       });

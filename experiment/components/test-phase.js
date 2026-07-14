@@ -220,18 +220,18 @@ const TestPhase = (function () {
         timeline.push({
           timeline: [{
             type:     jsPsychHtmlButtonResponse,
-            stimulus: function () {
-              return '<div class="text-content">' +
-                '<p>The study has ended because too many responses were missed.</p>' +
-                '<p>Your completion code is:<br>' +
-                '<strong style="font-size:1.3em;letter-spacing:2px;">' + CONFIG.completionCodes.earlyExitAttention + '</strong></p>' +
-                '<p>You will be redirected to Prolific automatically. If not, please return to ' +
-                'Prolific and enter the code above.</p>' +
-                '<p>If you have any questions, please contact the researcher.</p>' +
-                '</div>';
-            },
+            stimulus: `
+              <div class="text-content">
+                <p>The study has ended because too many responses were missed.</p>
+                <p>Your completion code is:<br>
+                   <strong style="font-size:1.3em;letter-spacing:2px;">${CONFIG.completionCodes.earlyExitAttention}</strong></p>
+                <p>You will be redirected to Prolific automatically. If not, please return to
+                   Prolific and enter the code above.</p>
+                <p>If you have any questions, please contact the researcher.</p>
+              </div>`,
             choices:  ['OK'],
             on_finish: function () {
+              jatos.studySessionData.earlyExit = true;
               jatos.submitResultData(JSON.stringify({
                 exit_type:  'attention_fail',
                 exit_phase: 'test',
