@@ -177,7 +177,7 @@
       });
       timeline.push(...twoAFCCheck.nodes);
 
-      // Abort screen — shown if both comprehension checks failed twice each.
+      // Exit screen — shown if both comprehension checks failed twice each.
       timeline.push({
         timeline: [{
           type:     jsPsychHtmlButtonResponse,
@@ -185,15 +185,15 @@
             <div class="text-content">
               <p>Unfortunately, it looks like there may be some difficulty understanding the tasks.
                  The study has ended.</p>
-              <p>Please <strong>return your submission on Prolific</strong> by clicking
-                 "Stop without completing" on the Prolific website.</p>
+              <p>Your completion code is:<br>
+                 <strong style="font-size:1.3em;letter-spacing:2px;">${CONFIG.completionCodes.screenOutComprehension}</strong></p>
+              <p>You will be redirected to Prolific automatically. If not, please return to
+                 Prolific and enter the code above.</p>
               <p>If you have any questions, please contact the researcher.</p>
             </div>`,
           choices:  ['OK'],
           on_finish: function () {
-            if (typeof jatos !== 'undefined') {
-              jatos.abortStudy('Participant failed both comprehension checks after 2 attempts each.');
-            }
+            Utils.endStudyRoute(CONFIG.prolificScreenOutURL);
             jsPsych.endExperiment();
           }
         }],

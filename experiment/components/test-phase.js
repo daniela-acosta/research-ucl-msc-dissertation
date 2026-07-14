@@ -220,12 +220,24 @@ const TestPhase = (function () {
         timeline.push({
           timeline: [{
             type:     jsPsychHtmlButtonResponse,
-            stimulus: '<div class="text-content"><p>The study has ended because too many responses were missed.</p><p>Please <strong>return your submission on Prolific</strong> by clicking "Stop without completing" on the Prolific website.</p><p>If you have any questions, please contact the researcher.</p></div>',
+            stimulus: function () {
+              return '<div class="text-content">' +
+                '<p>The study has ended because too many responses were missed.</p>' +
+                '<p>Your completion code is:<br>' +
+                '<strong style="font-size:1.3em;letter-spacing:2px;">' + CONFIG.completionCodes.earlyExitAttention + '</strong></p>' +
+                '<p>You will be redirected to Prolific automatically. If not, please return to ' +
+                'Prolific and enter the code above.</p>' +
+                '<p>If you have any questions, please contact the researcher.</p>' +
+                '</div>';
+            },
             choices:  ['OK'],
             on_finish: function () {
-              if (typeof jatos !== 'undefined') {
-                jatos.abortStudy('Excluded: missed too many test-phase responses.');
-              }
+              jatos.submitResultData(JSON.stringify({
+                exit_type:  'attention_fail',
+                exit_phase: 'test',
+                exit_block: _block,
+              }));
+              Utils.endStudyRoute(CONFIG.prolificAttentionExitURL);
               jsPsych.endExperiment();
             }
           }],

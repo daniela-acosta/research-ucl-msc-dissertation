@@ -52,6 +52,10 @@
       console.log('[jatos mock] startNextComponent() — would navigate to next component in production.');
     },
 
+    endStudy: function () {
+      console.log('[jatos mock] endStudy() — study complete, no redirect.');
+    },
+
     endStudyAndRedirect: function (url) {
       console.log('[jatos mock] endStudyAndRedirect() → ' + url);
     },

@@ -162,6 +162,17 @@ const Utils = (function () {
     };
   }
 
+  // Ends the study and redirects to a Prolific completion URL.
+  // In preview mode (JatosWorker / PREVIEW pid) skips the redirect and calls endStudy() instead.
+  function endStudyRoute(url) {
+    const isPreview = jatos.studySessionData && jatos.studySessionData.previewMode === true;
+    if (isPreview) {
+      jatos.endStudy();
+    } else {
+      jatos.endStudyAndRedirect(url);
+    }
+  }
+
   // Loads and parses the counterbalancing CSV via PapaParse.
   // Returns a Promise resolving to an array of row objects.
   function loadCounterbalancingTable() {
@@ -415,6 +426,7 @@ const Utils = (function () {
     walksAreValid,
     generatePracticeWalk,
     getProlificParams,
+    endStudyRoute,
     assignStimulusConfig,
     assignStimuli,
     loadCounterbalancingTable,

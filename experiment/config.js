@@ -134,7 +134,18 @@ const CONFIG = {
   questionCandidatesPath:    'data/2afc_question_candidates_v3.csv',
 
   // --- Prolific ---
-  prolificCompletionURL: 'PLACEHOLDER_COMPLETION_URL',
+  // Three distinct completion paths — each maps to a different Prolific action.
+  prolificCompletionURL:    'PLACEHOLDER_COMPLETION_URL',       // full completion → standard reward
+  prolificScreenOutURL:     'PLACEHOLDER_SCREENOUT_URL',        // comprehension fail → screen-out reward
+  prolificAttentionExitURL: 'PLACEHOLDER_ATTENTION_EXIT_URL',   // attention fail → awaiting review
+
+  // Completion codes shown on end screens and embedded in redirect URLs.
+  completionCodes: {
+    complete:               'COMPLETE',
+    screenOutComprehension: 'SCREENOUT_COMPREHENSION',
+    earlyExitAttention:     'EARLY_EXIT_ATTENTION',
+  },
+
   // Secret PID value that bypasses the missing-PID check and skips the Prolific
   // completion redirect at the end. Use ?PROLIFIC_PID=PREVIEW in the URL to test.
   previewPID: 'PREVIEW',
