@@ -177,6 +177,15 @@ _conf_rt = (
 )
 _conf_rt["cv"] = (_conf_rt["sd_rt"] / _conf_rt["mean_rt"]).round(3)
 
+_conf_resp = (
+    tt[tt["confidence_timed_out"] == False]
+    .groupby("participant_id")["confidence_response"]
+    .agg(mean_resp="mean", sd_resp="std")
+    .round(1)
+    .reset_index()
+)
+_conf_resp["cv"] = (_conf_resp["sd_resp"] / _conf_resp["mean_resp"]).round(3)
+
 rt_cv = (
     _ct_rt.rename(columns={"mean_rt": "ct_mean",   "sd_rt": "ct_sd",   "cv": "ct_cv"})
     .merge(
@@ -184,12 +193,16 @@ rt_cv = (
         on="participant_id", how="outer"
     )
     .merge(
-        _conf_rt.rename(columns={"mean_rt": "conf_mean", "sd_rt": "conf_sd", "cv": "conf_cv"}),
+        _conf_rt.rename(columns={"mean_rt": "conf_rt_mean", "sd_rt": "conf_rt_sd", "cv": "conf_rt_cv"}),
+        on="participant_id", how="outer"
+    )
+    .merge(
+        _conf_resp.rename(columns={"mean_resp": "conf_resp_mean", "sd_resp": "conf_resp_sd", "cv": "conf_resp_cv"}),
         on="participant_id", how="outer"
     )
 )
 print("\n── RT COEFFICIENT OF VARIATION (SD / mean) ──")
-print("  ct = cover task | tt = 2AFC | conf = confidence slider (timed-out trials excluded)")
+print("  ct = cover task | tt = 2AFC | conf_rt = confidence RT | conf_resp = confidence slider value (timed-out excluded)")
 print(with_totals(rt_cv).to_string(index=False))
 
 # ── Confidence response vs slider start position correlation ─────────────────
