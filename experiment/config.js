@@ -63,7 +63,10 @@ const CONFIG = {
   // --- Block structure ---
   numBlocks:         4,
   questionsPerBlock: 36,
-  walkLength:        48,
+  walkLength:        5,   // TESTING — reset to 48 before deployment
+
+  // Limit test-phase questions per block for fast testing. Set to null for full run.
+  testQuestionsLimit: 2,  // TESTING — set to null before deployment
 
   // --- Breaks ---
   breakDuration: 180,   // seconds; max rest time between blocks before auto-advance
@@ -123,10 +126,12 @@ const CONFIG = {
 
   // --- Random walk validation ---
   // Walks that fail any criterion are discarded and regenerated at study start.
+  // TESTING: all set to permissive values so short walks pass immediately.
+  // Reset to: minNodeAppearances: 3, maxCommunityFraction: 2/3, maxNodeFraction: 1/5
   walkValidation: {
-    minNodeAppearances:   3,    // every node must appear at least this many times
-    maxCommunityFraction: 2/3,  // no community may occupy more than this fraction of steps
-    maxNodeFraction:      1/5   // no single node may occupy more than this fraction of steps
+    minNodeAppearances:   0,
+    maxCommunityFraction: 1,
+    maxNodeFraction:      1,
   },
 
   // --- Data / counterbalancing ---

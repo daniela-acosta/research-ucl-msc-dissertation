@@ -69,7 +69,10 @@
 
       for (let block = 1; block <= CONFIG.numBlocks; block++) {
         const walk   = walks[block - 1];
-        const trials = Utils.getTrialsForBlock(table, block);
+        const allTrials = Utils.getTrialsForBlock(table, block);
+        const trials = CONFIG.testQuestionsLimit != null
+          ? allTrials.slice(0, CONFIG.testQuestionsLimit)
+          : allTrials;
 
         // Store walk sequence in studySessionData for potential later use.
         const sequences = jatos.studySessionData[CONFIG.sessionKeys.walkSequences] || {};
