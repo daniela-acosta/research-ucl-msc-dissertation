@@ -3,4 +3,5 @@ node_modules/
 venv/
 count-lines.sh
 data/results/
+data/pilot_results/
 .Rhistory
