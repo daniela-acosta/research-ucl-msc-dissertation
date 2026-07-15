@@ -31,8 +31,12 @@ import pandas as pd
 # Paths (relative to repo root; override with --results-dir)
 # ---------------------------------------------------------------------------
 REPO_ROOT    = Path(__file__).resolve().parents[2]
-RESULTS_DIR  = REPO_ROOT / "data" / "results"
-OUTPUT_PATH  = RESULTS_DIR / "combined_raw.csv"
+RESULTS_DIR      = REPO_ROOT / "data" / "results"
+OUTPUT_PATH      = RESULTS_DIR / "combined_raw.csv"
+DEMOGRAPHICS_PATH = RESULTS_DIR / "demographics.csv"
+
+# Matches CONFIG.previewPID in config.js — not a real Prolific ID.
+PREVIEW_PID  = "PREVIEW"
 
 # Columns from jsPsych internals that are not useful for analysis.
 # trial_index and time_elapsed are kept:
@@ -42,6 +46,7 @@ JUNK_COLUMNS = [
     "stimulus",
     "internal_node_id",
     "trial_type",
+    "correct_position_practice",  # practice artifact that leaks into main-task test rows
 ]
 
 
@@ -56,11 +61,43 @@ def _study_id_from_path(study_dir: Path) -> str:
 
 
 def _load_component(path: Path) -> dict | list | None:
-    """Parse a component data.txt file; return None on failure."""
+    """Parse a component data.txt file; return None on failure.
+
+    JATOS appends multiple submitResultData calls as newline-separated JSON
+    objects in the same file. This function handles that by merging all dict
+    objects and returning the first list if any is present.
+    """
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as e:
-        print(f"  WARNING: could not parse {path}: {e}")
+        text = path.read_text(encoding="utf-8").strip()
+        # Fast path: valid single JSON value.
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+        # Slow path: multiple JSON objects on separate lines.
+        objects = []
+        for line in text.splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    objects.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        if not objects:
+            print(f"  WARNING: no parseable JSON in {path}")
+            return None
+        # Return the trial array if present (main-task component).
+        for obj in objects:
+            if isinstance(obj, list):
+                return obj
+        # Otherwise merge all dicts (e.g. debrief_questions + exit_type).
+        merged: dict = {}
+        for obj in objects:
+            if isinstance(obj, dict):
+                merged.update(obj)
+        return merged or None
+    except OSError as e:
+        print(f"  WARNING: could not read {path}: {e}")
         return None
 
 
@@ -90,8 +127,9 @@ def _classify_components(
         elif isinstance(payload, dict):
             if "debrief_questions" in payload:
                 debrief = payload
-            else:
-                demographics = payload   # age, gender, stimulus_config, etc.
+            elif "age" in payload:
+                demographics = payload          # demographics component
+            # else: consent PID record or exit_type record — skip
 
     return demographics, trials, debrief
 
@@ -100,12 +138,14 @@ def _classify_components(
 # Main loader
 # ---------------------------------------------------------------------------
 
-def load_all(results_dir: Path) -> pd.DataFrame:
+def load_all(results_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Walk results_dir, parse every study result, and return a single DataFrame
-    with one row per jsPsych trial, tagged with participant metadata.
+    Walk results_dir, parse every study result, and return:
+      - a trial DataFrame (one row per jsPsych trial)
+      - a demographics DataFrame (one row per participant)
     """
     all_rows: list[pd.DataFrame] = []
+    demo_rows: list[dict] = []
 
     study_dirs = sorted(
         p for p in results_dir.iterdir()
@@ -134,9 +174,20 @@ def load_all(results_dir: Path) -> pd.DataFrame:
             type_map  = demographics.get("stimulus_type_map", {})
             stim_map  = demographics.get("stimulus_map", {})
 
-        # Use study_id as participant identifier when prolific_pid is absent
-        # (e.g. local test runs).
-        participant_id = pid if pid else f"local_{study_id}"
+        # Use study_id when prolific_pid is absent or is the preview sentinel,
+        # so preview/test runs each get a unique identifier.
+        real_pid = pid if (pid and pid != PREVIEW_PID) else ""
+        participant_id = real_pid if real_pid else f"local_{study_id}"
+
+        # Collect one demographics row per participant.
+        _DEMO_FIELDS = ["age", "gender", "gender_description", "handedness",
+                        "vision", "language", "comments"]
+        demo_row: dict = {"participant_id": participant_id, "prolific_pid": pid}
+        if demographics:
+            for field in _DEMO_FIELDS:
+                demo_row[field] = demographics.get(field)
+            demo_row["stimulus_config"] = demographics.get("stimulus_config")
+        demo_rows.append(demo_row)
 
         df = pd.DataFrame(trials)
         df.insert(0, "participant_id", participant_id)
@@ -178,7 +229,9 @@ def load_all(results_dir: Path) -> pd.DataFrame:
     cols_to_drop = [c for c in JUNK_COLUMNS if c in combined.columns]
     combined.drop(columns=cols_to_drop, inplace=True)
 
-    return combined
+    demographics_df = pd.DataFrame(demo_rows)
+
+    return combined, demographics_df
 
 
 # ---------------------------------------------------------------------------
@@ -199,18 +252,27 @@ def main():
         default=OUTPUT_PATH,
         help="Output CSV path (default: data/results/combined_raw.csv)",
     )
+    parser.add_argument(
+        "--demographics-out",
+        type=Path,
+        default=DEMOGRAPHICS_PATH,
+        help="Demographics output CSV (default: data/results/demographics.csv)",
+    )
     args = parser.parse_args()
 
-    print(f"Results dir : {args.results_dir}")
-    print(f"Output      : {args.output}\n")
+    print(f"Results dir      : {args.results_dir}")
+    print(f"Trials output    : {args.output}")
+    print(f"Demographics out : {args.demographics_out}\n")
 
-    df = load_all(args.results_dir)
+    df, demographics_df = load_all(args.results_dir)
 
     df.to_csv(args.output, index=False)
+    demographics_df.to_csv(args.demographics_out, index=False)
 
     print(f"\nDone. {len(df)} total rows, {df['participant_id'].nunique()} participant(s).")
     print(f"Trial type breakdown:\n{df['trial_type_label'].value_counts(dropna=False).to_string()}")
-    print(f"\nSaved to {args.output}")
+    print(f"\nSaved trials      → {args.output}")
+    print(f"Saved demographics → {args.demographics_out}")
 
 
 if __name__ == "__main__":

@@ -153,7 +153,7 @@ print(with_totals(tt_res).to_string(index=False))
 _ct_rt = (
     ct[ct["responded"] == True]
     .groupby("participant_id")["cover_rt"]
-    .agg(mean_rt="mean", sd_rt="std")
+    .agg(mean_rt="mean", sd_rt="std", median_rt="median", min_rt="min", max_rt="max")
     .round(1)
     .reset_index()
 )
@@ -162,7 +162,7 @@ _ct_rt["cv"] = (_ct_rt["sd_rt"] / _ct_rt["mean_rt"]).round(3)
 _tt_rt = (
     tt[tt["timed_out"] == False]
     .groupby("participant_id")["rt"]
-    .agg(mean_rt="mean", sd_rt="std")
+    .agg(mean_rt="mean", sd_rt="std", median_rt="median", min_rt="min", max_rt="max")
     .round(1)
     .reset_index()
 )
@@ -171,7 +171,7 @@ _tt_rt["cv"] = (_tt_rt["sd_rt"] / _tt_rt["mean_rt"]).round(3)
 _conf_rt = (
     tt[tt["confidence_timed_out"] == False]
     .groupby("participant_id")["confidence_rt"]
-    .agg(mean_rt="mean", sd_rt="std")
+    .agg(mean_rt="mean", sd_rt="std", median_rt="median", min_rt="min", max_rt="max")
     .round(1)
     .reset_index()
 )
@@ -180,30 +180,42 @@ _conf_rt["cv"] = (_conf_rt["sd_rt"] / _conf_rt["mean_rt"]).round(3)
 _conf_resp = (
     tt[tt["confidence_timed_out"] == False]
     .groupby("participant_id")["confidence_response"]
-    .agg(mean_resp="mean", sd_resp="std")
+    .agg(mean_resp="mean", sd_resp="std", median_resp="median", min_resp="min", max_resp="max")
     .round(1)
     .reset_index()
 )
 _conf_resp["cv"] = (_conf_resp["sd_resp"] / _conf_resp["mean_resp"]).round(3)
 
 rt_cv = (
-    _ct_rt.rename(columns={"mean_rt": "ct_mean",   "sd_rt": "ct_sd",   "cv": "ct_cv"})
+    _ct_rt.rename(columns={"mean_rt": "ct_mean", "sd_rt": "ct_sd", "median_rt": "ct_median", "cv": "ct_cv", "min_rt": "ct_min", "max_rt": "ct_max"})
     .merge(
-        _tt_rt.rename(columns={"mean_rt": "tt_mean", "sd_rt": "tt_sd", "cv": "tt_cv"}),
+        _tt_rt.rename(columns={"mean_rt": "tt_mean", "sd_rt": "tt_sd", "median_rt": "tt_median", "cv": "tt_cv", "min_rt": "tt_min", "max_rt": "tt_max"}),
         on="participant_id", how="outer"
     )
     .merge(
-        _conf_rt.rename(columns={"mean_rt": "conf_rt_mean", "sd_rt": "conf_rt_sd", "cv": "conf_rt_cv"}),
+        _conf_rt.rename(columns={"mean_rt": "conf_rt_mean", "sd_rt": "conf_rt_sd", "median_rt": "conf_rt_median", "cv": "conf_rt_cv", "min_rt": "conf_rt_min", "max_rt": "conf_rt_max"}),
         on="participant_id", how="outer"
     )
     .merge(
-        _conf_resp.rename(columns={"mean_resp": "conf_resp_mean", "sd_resp": "conf_resp_sd", "cv": "conf_resp_cv"}),
+        _conf_resp.rename(columns={"mean_resp": "conf_resp_mean", "sd_resp": "conf_resp_sd", "median_resp": "conf_resp_median", "cv": "conf_resp_cv", "min_resp": "conf_resp_min", "max_resp": "conf_resp_max"}),
         on="participant_id", how="outer"
     )
 )
-print("\n── RT COEFFICIENT OF VARIATION (SD / mean) ──")
-print("  ct = cover task | tt = 2AFC | conf_rt = confidence RT | conf_resp = confidence slider value (timed-out excluded)")
-print(with_totals(rt_cv).to_string(index=False))
+print("\n── RT COEFFICIENT OF VARIATION (SD / mean)  [timed-out trials excluded] ──")
+
+_cv_sections = [
+    ("Cover task RT (ms)",          ["ct_mean",        "ct_sd",        "ct_median",        "ct_min",        "ct_max",        "ct_cv"]),
+    ("2AFC RT (ms)",                 ["tt_mean",        "tt_sd",        "tt_median",        "tt_min",        "tt_max",        "tt_cv"]),
+    ("Confidence RT (ms)",           ["conf_rt_mean",   "conf_rt_sd",   "conf_rt_median",   "conf_rt_min",   "conf_rt_max",   "conf_rt_cv"]),
+    ("Confidence response (0–100)",  ["conf_resp_mean", "conf_resp_sd", "conf_resp_median", "conf_resp_min", "conf_resp_max", "conf_resp_cv"]),
+]
+_clean_cols = ["mean", "sd", "median", "min", "max", "cv"]
+
+for title, cols in _cv_sections:
+    sub = with_totals(rt_cv[["participant_id"] + cols].copy())
+    sub.columns = ["participant_id"] + _clean_cols
+    print(f"\n  {title}")
+    print(sub.to_string(index=False))
 
 # ── Confidence response vs slider start position correlation ─────────────────
 # A high correlation would suggest participants are anchoring on the random

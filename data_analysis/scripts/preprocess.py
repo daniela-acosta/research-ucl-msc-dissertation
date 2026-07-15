@@ -82,6 +82,7 @@ TEST_COLS = [
     "chose_option_a", "chose_plausible", "timed_out",
     # confidence
     "confidence_response", "confidence_rt", "confidence_timed_out",
+    "confidence_slider_start",
     # participant config
     "stimulus_config",
     # derived
