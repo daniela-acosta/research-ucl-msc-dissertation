@@ -161,13 +161,11 @@ const CONFIG = {
   exclusion: {
     learning: {
       maxConsecutiveMisses: 3,
-      maxMissRatePerBlock:  0.5,
-      maxMissRateWarning:   0.25   // warn once per block when cumulative rate hits this
+      maxMissRatePerBlock:  0.25   // exclude at end of block if ≥ 25% missed; warning fires 1 miss before
     },
     test: {
       maxConsecutiveMisses: 3,
-      maxMissRatePerBlock:  0.5,
-      maxMissRateWarning:   0.25
+      maxMissRatePerBlock:  0.25
     }
   },
 

@@ -237,16 +237,23 @@ const Utils = (function () {
   // so it fires at most once per block regardless of how many more misses follow.
   const _missRateWarned = new Set();
 
-  // Returns true the first time the cumulative miss rate in the current block reaches
-  // maxMissRateWarning. Requires at least 5 trials so early flukes don't trigger it.
+  // Returns true the first time the cumulative miss count in the current block reaches
+  // exactly one below the end-of-block exclusion threshold.
   function shouldWarnMissRate(jsPsych, trialTypeLabel, block) {
     const cfg = trialTypeLabel === 'learning'
       ? CONFIG.exclusion.learning
       : CONFIG.exclusion.test;
-    if (!cfg || !cfg.maxMissRateWarning) return false;
+    if (!cfg || cfg.maxMissRatePerBlock === null) return false;
 
     const key = trialTypeLabel + '-' + block;
     if (_missRateWarned.has(key)) return false;
+
+    const blockSize = trialTypeLabel === 'learning'
+      ? CONFIG.walkLength
+      : CONFIG.questionsPerBlock;
+    const excludeAt = Math.ceil(blockSize * cfg.maxMissRatePerBlock);
+    const warnAt    = excludeAt - 1;
+    if (warnAt < 1) return false;
 
     const blockTrials = jsPsych.data
       .get()
@@ -254,10 +261,8 @@ const Utils = (function () {
       .values()
       .filter(t => t.block === block);
 
-    if (blockTrials.length < 5) return false;
-
-    const rate = blockTrials.filter(t => t.response === null).length / blockTrials.length;
-    if (rate >= cfg.maxMissRateWarning) {
+    const missCount = blockTrials.filter(t => t.response === null).length;
+    if (missCount >= warnAt) {
       _missRateWarned.add(key);
       return true;
     }
@@ -326,7 +331,7 @@ const Utils = (function () {
       const blockTrials = trials.filter(t => t.block === block);
       if (blockTrials.length >= expectedCount) {
         const rate = blockTrials.filter(t => t.response === null).length / blockTrials.length;
-        if (rate > cfg.maxMissRatePerBlock) return true;
+        if (rate >= cfg.maxMissRatePerBlock) return true;
       }
     }
 
