@@ -76,6 +76,7 @@
   <script>
     jatos.onLoad(function () {
       const isPreview = jatos.studySessionData.previewMode === true;
+      let _debriefQuestions = null;
 
       const jsPsych = initJsPsych({
         on_finish: function () {
@@ -147,9 +148,10 @@
             });
           },
           on_finish: function (data) {
-            // Save awareness responses immediately so they are not lost if the
-            // participant closes the window before clicking "Finish".
-            jatos.submitResultData(JSON.stringify({ debrief_questions: data.response }));
+            _debriefQuestions = data.response;
+            // Submit immediately so data is not lost if the participant closes
+            // the window before clicking "Finish".
+            jatos.submitResultData(JSON.stringify({ debrief_questions: _debriefQuestions }));
           }
         },
 
@@ -180,7 +182,13 @@
             </div>`,
           choices: [isPreview ? 'Finish (preview mode)' : 'Finish and claim your reward'],
           on_finish: function () {
-            jatos.submitResultData(JSON.stringify({ exit_type: 'completed' }));
+            // Resubmit with both fields combined so the final record includes
+            // everything — JATOS replaces on each call, so this overwrites the
+            // earlier single-field submission.
+            jatos.submitResultData(JSON.stringify({
+              debrief_questions: _debriefQuestions,
+              exit_type: 'completed'
+            }));
           }
         }
 

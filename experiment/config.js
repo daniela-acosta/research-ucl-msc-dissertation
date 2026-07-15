@@ -138,15 +138,15 @@ const CONFIG = {
 
   // --- Prolific ---
   // Three distinct completion paths — each maps to a different Prolific action.
-  prolificCompletionURL:    'PLACEHOLDER_COMPLETION_URL',       // full completion → standard reward
-  prolificScreenOutURL:     'PLACEHOLDER_SCREENOUT_URL',        // comprehension fail → screen-out reward
-  prolificAttentionExitURL: 'PLACEHOLDER_ATTENTION_EXIT_URL',   // attention fail → awaiting review
+  prolificCompletionURL:    'https://app.prolific.com/submissions/complete?cc=C104P3H9',  // full completion → standard reward
+  prolificScreenOutURL:     'https://app.prolific.com/submissions/complete?cc=C11G0DN3',  // comprehension fail → screen-out reward
+  prolificAttentionExitURL: 'https://app.prolific.com/submissions/complete?cc=C10213M3', // attention fail → awaiting review
 
   // Completion codes shown on end screens and embedded in redirect URLs.
   completionCodes: {
-    complete:               'COMPLETE',
-    screenOutComprehension: 'SCREENOUT_COMPREHENSION',
-    earlyExitAttention:     'EARLY_EXIT_ATTENTION',
+    complete:               'C104P3H9',
+    screenOutComprehension: 'C11G0DN3',
+    earlyExitAttention:     'C10213M3',
   },
 
   // Secret PID value that bypasses the missing-PID check and skips the Prolific

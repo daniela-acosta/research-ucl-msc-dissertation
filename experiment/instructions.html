@@ -72,7 +72,7 @@
              response rate throughout.</p>
           <p>If you miss <strong>${CONFIG.exclusion.learning.maxConsecutiveMisses} or more
              responses in a row</strong>, or <strong>more than
-             ${Math.round(CONFIG.exclusion.learning.maxMissRateWarning * 100)}% of responses
+             ${Math.round(CONFIG.exclusion.learning.maxMissRatePerBlock * 100)}% of responses
              in a single round</strong>, you will receive a warning on screen. If misses
              continue after the warning, the study will end automatically and you will not
              be able to complete it.</p>
