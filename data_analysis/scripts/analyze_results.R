@@ -43,6 +43,31 @@ testing_trial_count <- blocks * questions_per_block
 og_learning_count <- count(learning) %>% pull(n)
 og_testing_count <- count(testing) %>% pull(n)
 og_demographics_count <- count(demographics) %>% pull(n)
+
+learning_timeouts <- learning %>%
+  group_by(participant_id) %>%
+  summarise(
+    timeout_rate = sum(!responded) / n()
+  ) %>%
+  summarise(
+    mean_tr = mean(timeout_rate, na.rm = TRUE),
+    sd_tr = sd(timeout_rate, na.rm = TRUE),
+    min_tr = min(timeout_rate, na.rm = TRUE),
+    max_tr = max(timeout_rate, na.rm = TRUE)
+  )
+
+testing_timeouts <- testing %>%
+  group_by(participant_id) %>%
+  summarise(
+    timeout_rate = sum(timed_out) / n()
+  ) %>%
+  summarise(
+    mean_tr = mean(timeout_rate, na.rm = TRUE),
+    sd_tr = sd(timeout_rate, na.rm = TRUE),
+    min_tr = min(timeout_rate, na.rm = TRUE),
+    max_tr = max(timeout_rate, na.rm = TRUE)
+  )
+
 #--
 
 
