@@ -42,6 +42,7 @@ testing_trial_count <- blocks * questions_per_block
 #--for sanity checks--
 og_learning_count <- count(learning) %>% pull(n)
 og_testing_count <- count(testing) %>% pull(n)
+og_demographics_count <- count(demographics) %>% pull(n)
 #--
 
 
@@ -152,9 +153,12 @@ learning <- learning %>%
   filter(!participant_id %in% excluded_participants)
 testing <- testing %>%
   filter(!participant_id %in% excluded_participants)
+demographics <- demographics %>%
+  filter(!participant_id %in% excluded_participants)
 
 learning_count <- count(learning) %>% pull(n)
 testing_count <- count(testing) %>% pull(n)
+demographics_count <- count(demographics) %>% pull(n)
 
 #--sanity check--
 cat("participants excluded: ", excluded_participants_count)
@@ -168,6 +172,9 @@ cat("OG testing trials: ", og_testing_count)
 cat("current testing trials: ", testing_count)
 cat("difference: ", og_testing_count - testing_count)
 cat("participants excluded in testing: ", (og_testing_count - testing_count) / testing_trial_count)
+
+cat("OG demographics count: ", og_demographics_count)
+cat("demographics count: ", demographics_count)
 #-----
 
 
