@@ -142,7 +142,7 @@ conf_excl_4 <- testing %>%
 excluded_participants <- unique(
   c(
   cover_excl_1, cover_excl_2, cover_excl_3,
-  afc_excl_1, afc_excl_1, afc_excl_1,
+  afc_excl_1, afc_excl_2, afc_excl_3,
   conf_excl_1, conf_excl_2, conf_excl_3, conf_excl_4
   )
 )
@@ -189,7 +189,15 @@ participants_age <- demographics %>%
   )
 
 # Gender summary
+participants_gender <- demographics %>%
+  count(gender) %>%
+  mutate(
+    prop_gender = n/sum(n)
+  )
 
 # Stimulus configuration
-
-
+participants_graph_config <- demographics %>%
+  count(stimulus_config) %>%
+  mutate(
+    prop_config = n/sum(n)
+  )
