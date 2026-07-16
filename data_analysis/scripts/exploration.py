@@ -12,7 +12,15 @@ parser.add_argument(
     default=None,
     help="participant_id to filter on. Omit to plot all participants combined."
 )
+parser.add_argument(
+    "--data-dir", "-d",
+    default="../data/results",
+    help="Directory containing learning_trials.csv and test_trials.csv, and where plots are saved. "
+         "Default: ../data/results"
+)
 args = parser.parse_args()
+
+DATA_DIR = args.data_dir.rstrip("/")
 
 # Canonical category order (by category number 1–9) for consistent x-axis / legend.
 CAT_ORDER = [
@@ -33,8 +41,8 @@ T1_ORDER = [t for t in CAT_ORDER if t in {
     'B1XB__B2WB',   'B1XB__B2XNB',
 }]
 
-ct = pd.read_csv("../data/results/learning_trials.csv")
-tt = pd.read_csv("../data/results/test_trials.csv")
+ct = pd.read_csv(f"{DATA_DIR}/learning_trials.csv")
+tt = pd.read_csv(f"{DATA_DIR}/test_trials.csv")
 
 # Older data collections lack confidence_slider_start (logged from a later build).
 # Fall back to 50 (slider midpoint) so downstream analyses degrade gracefully.
@@ -502,7 +510,7 @@ ax_conf_t1.set_xlabel("Block")
 
 plt.suptitle(f"By Block — {title_tag}", y=1.01)
 plt.tight_layout()
-out = f"../data/results/exploration_by_block{file_suffix}.png"
+out = f"{DATA_DIR}/exploration_by_block{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
@@ -643,7 +651,7 @@ axes_t1[2, 1].legend(title="Category", bbox_to_anchor=(1.01, 1), loc="upper left
 
 plt.suptitle(f"T1 Trials — Accuracy, RT & Confidence by Category — {title_tag}", y=1.01)
 plt.tight_layout()
-out = f"../data/results/exploration_by_category_T1{file_suffix}.png"
+out = f"{DATA_DIR}/exploration_by_category_T1{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
@@ -733,7 +741,7 @@ axes_ci[2, 1].legend(title="Response")
 
 plt.suptitle(f"T1 Trials — Correct vs Incorrect: Confidence & RT — {title_tag}", y=1.01)
 plt.tight_layout()
-out = f"../data/results/exploration_T1_correct_vs_incorrect{file_suffix}.png"
+out = f"{DATA_DIR}/exploration_T1_correct_vs_incorrect{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
@@ -775,7 +783,7 @@ axes_t0[1, 1].legend(title="Category", bbox_to_anchor=(1.01, 1), loc="upper left
 
 plt.suptitle(f"T0 Trials — RT & Confidence by Category — {title_tag}", y=1.01)
 plt.tight_layout()
-out = f"../data/results/exploration_by_category_T0{file_suffix}.png"
+out = f"{DATA_DIR}/exploration_by_category_T0{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
@@ -817,7 +825,7 @@ axes_t2[1, 1].legend(title="Category", bbox_to_anchor=(1.01, 1), loc="upper left
 
 plt.suptitle(f"T2 Trials — RT & Confidence by Category — {title_tag}", y=1.01)
 plt.tight_layout()
-out = f"../data/results/exploration_by_category_T2{file_suffix}.png"
+out = f"{DATA_DIR}/exploration_by_category_T2{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
@@ -902,7 +910,7 @@ ax_td.set_ylabel("Mean Accuracy")
 
 plt.suptitle(f"Transition Exposure vs Accuracy — {title_tag}", y=1.01)
 plt.tight_layout()
-out = f"../data/results/exploration_transition_exposure{file_suffix}.png"
+out = f"{DATA_DIR}/exploration_transition_exposure{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])
@@ -937,7 +945,7 @@ ax_hm.set_xlabel("Node position")
 ax_hm.set_ylabel("Fractal")
 ax_hm.set_title(f"Fractal–Node Assignment Counts — {title_tag}")
 plt.tight_layout()
-out = f"../data/results/exploration_fractal_node_heatmap{file_suffix}.png"
+out = f"{DATA_DIR}/exploration_fractal_node_heatmap{file_suffix}.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 plt.close()
 subprocess.run(["open", out])

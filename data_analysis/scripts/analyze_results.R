@@ -1,5 +1,7 @@
 
 library("tidyverse")
+library("lme4")
+library("lmerTest")
 
 theme_set(
   theme_bw(base_size = 15) +
@@ -8,9 +10,12 @@ theme_set(
 
 
 # LOAD DATA
-demographics <- read_csv("../../data/results/demographics.csv")
-learning <- read_csv("../../data/results/learning_trials.csv")
-testing <- read_csv("../../data/results/test_trials.csv")
+# data_dir <- "../../data/results/"
+data_dir <- "../../data/to_review/"
+
+demographics <- read_csv(paste(data_dir, "demographics.csv", sep = ""))
+learning <- read_csv(paste(data_dir, "learning_trials.csv", sep = ""))
+testing <- read_csv(paste(data_dir, "test_trials.csv", sep = ""))
 
 learning <- learning %>%
   mutate(
@@ -186,6 +191,7 @@ testing_count <- count(testing) %>% pull(n)
 demographics_count <- count(demographics) %>% pull(n)
 
 #--sanity check--
+# results should be integers, not decimal numbers
 cat("participants excluded: ", excluded_participants_count)
 
 cat("OG learning trials: ", og_learning_count)
@@ -226,3 +232,11 @@ participants_graph_config <- demographics %>%
   mutate(
     prop_config = n/sum(n)
   )
+
+
+# PREP DATA
+
+
+# ANALYSIS 1: LMEM effect of block on DVs
+
+lmer(block ~ correct)
