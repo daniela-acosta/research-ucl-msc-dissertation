@@ -127,7 +127,7 @@ tt_res = (
     .agg(
         timeout_rate=("timed_out", "mean"),        # proportion timed out overall
         mean_rt=("rt", "mean"),
-        accuracy_t1=("accuracy", "mean"),          # NaN for T0/T2, so mean is T1-only
+        correct_t1=("correct", "mean"),            # NaN for T0/T2, so mean is T1-only
         mean_confidence=("confidence_response", "mean"),
         conf_mean_rt=("confidence_rt", "mean"),
     )
@@ -260,7 +260,7 @@ qtype_res = (
     tt[tt["timed_out"] == False]
     .groupby(["comparison_type", "category", "comparison_pair_tag"])
     .agg(
-        accuracy        =("accuracy",            "mean"),  # NaN for T0/T2
+        correct         =("correct",             "mean"),  # NaN for T0/T2
         mean_rt         =("rt",                  "mean"),
         mean_confidence =("confidence_response", "mean"),
     )
@@ -279,7 +279,7 @@ type_res = (
     tt[tt["timed_out"] == False]
     .groupby("comparison_type")
     .agg(
-        accuracy        =("accuracy",            "mean"),
+        correct         =("correct",             "mean"),
         mean_rt         =("rt",                  "mean"),
         mean_confidence =("confidence_response", "mean"),
     )
@@ -295,7 +295,7 @@ node_res = (
     tt[tt["timed_out"] == False]
     .groupby("base_node")
     .agg(
-        accuracy        =("accuracy",            "mean"),
+        correct         =("correct",             "mean"),
         mean_rt         =("rt",                  "mean"),
         mean_confidence =("confidence_response", "mean"),
     )
@@ -311,7 +311,7 @@ base_fractal_res = (
     tt[tt["timed_out"] == False]
     .groupby("base_fractal")
     .agg(
-        accuracy        =("accuracy",            "mean"),
+        correct         =("correct",             "mean"),
         mean_rt         =("rt",                  "mean"),
         mean_confidence =("confidence_response", "mean"),
     )
@@ -327,7 +327,7 @@ dest_fractal_res = (
     tt[tt["timed_out"] == False]
     .groupby("chosen_fractal")
     .agg(
-        accuracy        =("accuracy",            "mean"),
+        correct         =("correct",             "mean"),
         mean_rt         =("rt",                  "mean"),
         mean_confidence =("confidence_response", "mean"),
     )
@@ -348,7 +348,7 @@ tt_resp["base_node_type"] = tt_resp["base_node"].map(lambda n: "B" if n in BOUND
 sym_res = (
     tt_resp.groupby("base_sym_type")
     .agg(
-        accuracy        =("accuracy",            "mean"),
+        correct         =("correct",             "mean"),
         mean_rt         =("rt",                  "mean"),
         mean_confidence =("confidence_response", "mean"),
     )
@@ -362,7 +362,7 @@ print(sym_res.to_string(index=False))
 nb_res = (
     tt_resp.groupby("base_node_type")
     .agg(
-        accuracy        =("accuracy",            "mean"),
+        correct         =("correct",             "mean"),
         mean_rt         =("rt",                  "mean"),
         mean_confidence =("confidence_response", "mean"),
     )
@@ -406,7 +406,7 @@ tt_res_block = (
     .groupby(["participant_id", "block"])
     .agg(
         mean_rt        =("rt",                  "mean"),
-        accuracy       =("accuracy",            "mean"),   # NaN for T0/T2, so mean is T1-only
+        correct        =("correct",             "mean"),   # NaN for T0/T2, so mean is T1-only
         mean_confidence=("confidence_response", "mean"),
         conf_mean_rt   =("confidence_rt",       "mean"),
     )
@@ -432,7 +432,7 @@ def ylim(*series, pad=0.07):
 
 # ── by-block axis limits (computed from data) ────────────────────────────────
 ct_acc_ylim  = ylim(ct_res_block["accuracy"])
-tt_acc_ylim  = ylim(tt_res_block["accuracy"])
+tt_acc_ylim  = ylim(tt_res_block["correct"])
 tt_conf_ylim = ylim(tt_res_block["mean_confidence"], tt_res_block_t1["mean_confidence"])
 
 # ── colors ──────────────────────────────────────────────────────────────────
@@ -461,9 +461,9 @@ ax_ct.set_xlabel("Block")
 # Panel 2 — 2AFC RT + accuracy
 ax_2afc2 = ax_2afc.twinx()
 sns.lineplot(data=tt_res_block, x="block", y="mean_rt",  marker="o", ax=ax_2afc,  color=color_rt)
-sns.lineplot(data=tt_res_block, x="block", y="accuracy", marker="o", ax=ax_2afc2, color=color_acc)
+sns.lineplot(data=tt_res_block, x="block", y="correct", marker="o", ax=ax_2afc2, color=color_acc)
 for _, g in tt_res_block.groupby("participant_id"):
-    ax_2afc2.scatter(g["block"], g["accuracy"], alpha=0.35, s=18, color=color_acc, zorder=2)
+    ax_2afc2.scatter(g["block"], g["correct"], alpha=0.35, s=18, color=color_acc, zorder=2)
 ax_2afc.set_ylabel("Mean RT (ms)", color=color_rt)
 ax_2afc.tick_params(axis="y", labelcolor=color_rt)
 ax_2afc2.set_ylabel("Accuracy (T1 only)", color=color_acc)
@@ -512,13 +512,13 @@ subprocess.run(["open", out])
 # one-sample t-test on the distribution of slopes against zero.
 _t1_blk = (
     tt[(tt["comparison_type"] == "T1") & (tt["timed_out"] == False)]
-    .groupby(["participant_id", "block"])["accuracy"]
+    .groupby(["participant_id", "block"])["correct"]
     .mean().reset_index()
 )
 _slopes = []
 for pid, grp in _t1_blk.groupby("participant_id"):
     grp = grp.sort_values("block")
-    res = stats.linregress(grp["block"], grp["accuracy"])
+    res = stats.linregress(grp["block"], grp["correct"])
     _slopes.append({
         "participant_id": pid,
         "slope":          round(res.slope,    4),
@@ -550,10 +550,10 @@ T2_ORDER = ['NB1WB__NB1WNB', 'B1WNB__B1XB']
 
 # ── T1 aggregations ──────────────────────────────────────────────────────────
 acc_by_cat = (
-    t1.groupby(["category", "comparison_pair_tag"])["accuracy"]
+    t1.groupby(["category", "comparison_pair_tag"])["correct"]
     .mean().reset_index().sort_values("category")
 )
-acc_by_cat_block = t1.groupby(["comparison_pair_tag", "block"])["accuracy"].mean().reset_index()
+acc_by_cat_block = t1.groupby(["comparison_pair_tag", "block"])["correct"].mean().reset_index()
 rt_t1_global     = t1_resp.groupby("comparison_pair_tag")["rt"].mean().reset_index()
 rt_t1_block      = t1_resp.groupby(["comparison_pair_tag", "block"])["rt"].mean().reset_index()
 conf_t1_global   = t1_resp.groupby("comparison_pair_tag")["confidence_response"].mean().reset_index()
@@ -572,7 +572,7 @@ conf_t2_global = t2_resp.groupby("comparison_pair_tag")["confidence_response"].m
 conf_t2_block  = t2_resp.groupby(["comparison_pair_tag", "block"])["confidence_response"].mean().reset_index()
 
 # ── category-level axis limits (computed from data) ──────────────────────────
-_acc_lo, _acc_hi = ylim(acc_by_cat["accuracy"], acc_by_cat_block["accuracy"])
+_acc_lo, _acc_hi = ylim(acc_by_cat["correct"], acc_by_cat_block["correct"])
 cat_acc_ylim  = (min(_acc_lo, 0.45), _acc_hi)   # always show the 0.5 chance line
 cat_rt_ylim   = ylim(
     rt_t1_global["rt"],   rt_t1_block["rt"],
@@ -588,7 +588,7 @@ cat_conf_ylim = ylim(
 # ── fig_t1: T1 — Accuracy + RT + Confidence (3×2) ───────────────────────────
 fig_t1, axes_t1 = plt.subplots(3, 2, figsize=(16, 14))
 
-sns.barplot(data=acc_by_cat, x="comparison_pair_tag", y="accuracy",
+sns.barplot(data=acc_by_cat, x="comparison_pair_tag", y="correct",
             ax=axes_t1[0, 0], color=color_acc, order=T1_ORDER)
 axes_t1[0, 0].axhline(0.5, color="black", linestyle="--", linewidth=0.8)
 axes_t1[0, 0].set_ylim(cat_acc_ylim)
@@ -597,7 +597,7 @@ axes_t1[0, 0].set_xlabel("")
 axes_t1[0, 0].set_ylabel("Accuracy")
 axes_t1[0, 0].tick_params(axis="x", rotation=30)
 
-sns.lineplot(data=acc_by_cat_block, x="block", y="accuracy",
+sns.lineplot(data=acc_by_cat_block, x="block", y="correct",
              hue="comparison_pair_tag", hue_order=T1_ORDER, marker="o", ax=axes_t1[0, 1])
 axes_t1[0, 1].axhline(0.5, color="black", linestyle="--", linewidth=0.8)
 axes_t1[0, 1].set_ylim(cat_acc_ylim)
@@ -650,15 +650,15 @@ subprocess.run(["open", out])
 
 # ── fig_t1_ci: T1 — Confidence & RT split by Correct vs Incorrect ────────────
 t1_resp_ci = t1_resp.copy()
-t1_resp_ci["correct"] = t1_resp_ci["accuracy"].map({1.0: "Correct", 0.0: "Incorrect"})
+t1_resp_ci["correct_label"] = t1_resp_ci["correct"].map({1.0: "Correct", 0.0: "Incorrect"})
 
-ci_conf_cat   = (t1_resp_ci.groupby(["correct", "comparison_pair_tag"])
+ci_conf_cat   = (t1_resp_ci.groupby(["correct_label", "comparison_pair_tag"])
                  ["confidence_response"].mean().reset_index())
-ci_conf_block = (t1_resp_ci.groupby(["correct", "block"])
+ci_conf_block = (t1_resp_ci.groupby(["correct_label", "block"])
                  ["confidence_response"].mean().reset_index())
-ci_rt_cat     = (t1_resp_ci.groupby(["correct", "comparison_pair_tag"])
+ci_rt_cat     = (t1_resp_ci.groupby(["correct_label", "comparison_pair_tag"])
                  ["rt"].mean().reset_index())
-ci_rt_block   = (t1_resp_ci.groupby(["correct", "block"])
+ci_rt_block   = (t1_resp_ci.groupby(["correct_label", "block"])
                  ["rt"].mean().reset_index())
 
 ci_palette  = {"Correct": "seagreen", "Incorrect": "salmon"}
@@ -670,7 +670,7 @@ ci_rt_ylim   = ylim(ci_rt_cat["rt"], ci_rt_block["rt"])
 fig_ci, axes_ci = plt.subplots(3, 2, figsize=(16, 14))
 
 # Row 1 — overall accuracy (context; same as T1 category figure)
-sns.barplot(data=acc_by_cat, x="comparison_pair_tag", y="accuracy",
+sns.barplot(data=acc_by_cat, x="comparison_pair_tag", y="correct",
             ax=axes_ci[0, 0], color=color_acc, order=T1_ORDER)
 axes_ci[0, 0].axhline(0.5, color="black", linestyle="--", linewidth=0.8)
 axes_ci[0, 0].set_ylim(cat_acc_ylim)
@@ -679,7 +679,7 @@ axes_ci[0, 0].set_xlabel("")
 axes_ci[0, 0].set_ylabel("Accuracy")
 axes_ci[0, 0].tick_params(axis="x", rotation=30)
 
-sns.lineplot(data=acc_by_cat_block, x="block", y="accuracy",
+sns.lineplot(data=acc_by_cat_block, x="block", y="correct",
              hue="comparison_pair_tag", hue_order=T1_ORDER, marker="o", ax=axes_ci[0, 1])
 axes_ci[0, 1].axhline(0.5, color="black", linestyle="--", linewidth=0.8)
 axes_ci[0, 1].set_ylim(cat_acc_ylim)
@@ -691,7 +691,7 @@ axes_ci[0, 1].legend(title="Category", bbox_to_anchor=(1.01, 1), loc="upper left
 
 # Row 2 — confidence by correct / incorrect
 sns.barplot(data=ci_conf_cat, x="comparison_pair_tag", y="confidence_response",
-            hue="correct", hue_order=ci_hue_order, palette=ci_palette,
+            hue="correct_label", hue_order=ci_hue_order, palette=ci_palette,
             ax=axes_ci[1, 0], order=T1_ORDER)
 axes_ci[1, 0].set_ylim(ci_conf_ylim)
 axes_ci[1, 0].set_title("Confidence by Category — Correct vs Incorrect (T1)")
@@ -701,7 +701,7 @@ axes_ci[1, 0].tick_params(axis="x", rotation=30)
 axes_ci[1, 0].legend(title="Response")
 
 sns.lineplot(data=ci_conf_block, x="block", y="confidence_response",
-             hue="correct", hue_order=ci_hue_order, palette=ci_palette,
+             hue="correct_label", hue_order=ci_hue_order, palette=ci_palette,
              marker="o", ax=axes_ci[1, 1])
 axes_ci[1, 1].set_ylim(ci_conf_ylim)
 axes_ci[1, 1].set_title("Confidence across Blocks — Correct vs Incorrect (T1)")
@@ -712,7 +712,7 @@ axes_ci[1, 1].legend(title="Response")
 
 # Row 3 — RT by correct / incorrect
 sns.barplot(data=ci_rt_cat, x="comparison_pair_tag", y="rt",
-            hue="correct", hue_order=ci_hue_order, palette=ci_palette,
+            hue="correct_label", hue_order=ci_hue_order, palette=ci_palette,
             ax=axes_ci[2, 0], order=T1_ORDER)
 axes_ci[2, 0].set_ylim(ci_rt_ylim)
 axes_ci[2, 0].set_title("RT by Category — Correct vs Incorrect (T1)")
@@ -722,7 +722,7 @@ axes_ci[2, 0].tick_params(axis="x", rotation=30)
 axes_ci[2, 0].legend(title="Response")
 
 sns.lineplot(data=ci_rt_block, x="block", y="rt",
-             hue="correct", hue_order=ci_hue_order, palette=ci_palette,
+             hue="correct_label", hue_order=ci_hue_order, palette=ci_palette,
              marker="o", ax=axes_ci[2, 1])
 axes_ci[2, 1].set_ylim(ci_rt_ylim)
 axes_ci[2, 1].set_title("RT across Blocks — Correct vs Incorrect (T1)")
@@ -865,12 +865,12 @@ t1_exp_resp = t1_exp[t1_exp["timed_out"] == False]
 
 trans_acc_p = (
     t1_exp_resp.groupby("trans_plausible")
-    .agg(n_trials=("accuracy", "count"), mean_accuracy=("accuracy", "mean"))
+    .agg(n_trials=("correct", "count"), mean_correct=("correct", "mean"))
     .round(3).reset_index()
 )
 trans_acc_d = (
     t1_exp_resp.groupby("trans_diff")
-    .agg(n_trials=("accuracy", "count"), mean_accuracy=("accuracy", "mean"))
+    .agg(n_trials=("correct", "count"), mean_correct=("correct", "mean"))
     .round(3).reset_index()
 )
 print("\n── ACCURACY BY PLAUSIBLE TRANSITION COUNT (T1, cumulative) ──")
@@ -880,21 +880,21 @@ print(trans_acc_d.to_string(index=False))
 
 # Step 6: bar charts
 acc_by_p = (
-    t1_exp_resp.groupby("trans_plausible")["accuracy"].mean().reset_index()
+    t1_exp_resp.groupby("trans_plausible")["correct"].mean().reset_index()
 )
 acc_by_d = (
-    t1_exp_resp.groupby("trans_diff")["accuracy"].mean().reset_index()
+    t1_exp_resp.groupby("trans_diff")["correct"].mean().reset_index()
 )
 
 fig_trans, (ax_tp, ax_td) = plt.subplots(1, 2, figsize=(14, 5))
 
-sns.barplot(data=acc_by_p, x="trans_plausible", y="accuracy", ax=ax_tp, color=color_acc)
+sns.barplot(data=acc_by_p, x="trans_plausible", y="correct", ax=ax_tp, color=color_acc)
 ax_tp.axhline(0.5, color="black", linestyle="--", linewidth=0.8)
 ax_tp.set_title("Accuracy by Plausible Transition Count (T1)")
 ax_tp.set_xlabel("Times base → plausible seen in learning (cumulative)")
 ax_tp.set_ylabel("Mean Accuracy")
 
-sns.barplot(data=acc_by_d, x="trans_diff", y="accuracy", ax=ax_td, color="slateblue")
+sns.barplot(data=acc_by_d, x="trans_diff", y="correct", ax=ax_td, color="slateblue")
 ax_td.axhline(0.5, color="black", linestyle="--", linewidth=0.8)
 ax_td.set_title("Accuracy by Transition Count Difference (T1)")
 ax_td.set_xlabel("Count(plausible) − Count(implausible) seen in learning")

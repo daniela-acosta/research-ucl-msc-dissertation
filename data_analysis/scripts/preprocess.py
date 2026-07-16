@@ -7,7 +7,7 @@ Loads combined_raw.csv, cleans types, derives analysis variables, and outputs:
     data/results/learning_trials.csv  ← cover-task trials (supplementary)
 
 Derived variables added to test_trials:
-    accuracy      1/0 for T1 trials (chose plausible option); NaN for T0/T2 and timeouts
+    correct       1/0 for T1 trials (chose plausible option); NaN for T0/T2 and timeouts
     confidence_z  confidence_response z-scored within each participant
 
 Usage:
@@ -86,7 +86,7 @@ TEST_COLS = [
     # participant config
     "stimulus_config",
     # derived
-    "accuracy", "confidence_z",
+    "correct", "confidence_z",
 ]
 
 LEARNING_COLS = [
@@ -138,18 +138,18 @@ def fix_types(df: pd.DataFrame) -> pd.DataFrame:
 # Derived variables
 # ---------------------------------------------------------------------------
 
-def add_accuracy(df: pd.DataFrame) -> pd.DataFrame:
+def add_correct(df: pd.DataFrame) -> pd.DataFrame:
     """
-    accuracy: 1 if the participant chose the plausible option, 0 if not.
+    correct: 1 if the participant chose the plausible option, 0 if not.
     Defined only for T1 trials (one plausible, one implausible option).
     NaN for T0/T2 (no clear correct answer) and for timed-out trials.
     """
     is_t1        = df["comparison_type"] == "T1"
     not_timedout = ~df["timed_out"].fillna(True)
-    df["accuracy"] = np.where(
+    df["correct"] = np.where(
         is_t1 & not_timedout,
         df["chose_plausible"].astype(float),
-        np.nan
+        np.where(is_t1, 0.0, np.nan)  # T1 timeouts → 0; T0/T2 → NaN (no correct answer)
     )
     return df
 
@@ -167,10 +167,10 @@ def add_confidence_z(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_cover_correct(df: pd.DataFrame) -> pd.DataFrame:
     """
-    cover_correct: True if the participant correctly judged the stimulus symmetry.
+    cover_correct: 1 if the participant correctly judged the stimulus symmetry, 0 otherwise.
     Derived from node_symmetry_type (S/A, from demographics stimulus_type_map)
     and the configured cover task response keys.
-    NaN if no response was given (timed out / missed).
+    Missed trials (no response) count as 0, consistent with accuracy = correct / all_trials.
     """
     correct_key = df["node_symmetry_type"].map({
         "S": COVER_KEY_SYMMETRIC,
@@ -179,8 +179,8 @@ def add_cover_correct(df: pd.DataFrame) -> pd.DataFrame:
     has_response = df["cover_response"].notna()
     df["cover_correct"] = np.where(
         has_response,
-        df["cover_response"] == correct_key,
-        np.nan
+        (df["cover_response"] == correct_key).astype(float),
+        0.0  # missed trials count as incorrect
     )
     return df
 
@@ -197,13 +197,13 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     # ── Test trials ─────────────────────────────────────────────────────────
     test = raw[raw["trial_type_label"] == "test"].copy()
-    test = add_accuracy(test)
+    test = add_correct(test)
     test = add_confidence_z(test)
     test = test[[c for c in TEST_COLS if c in test.columns]].copy()
     test.reset_index(drop=True, inplace=True)
 
     print(f"\nTest trials : {len(test)} rows, {test['participant_id'].nunique()} participant(s)")
-    print(f"  accuracy defined (T1, responded): {test['accuracy'].notna().sum()} / {len(test)}")
+    print(f"  correct defined (T1, responded): {test['correct'].notna().sum()} / {len(test)}")
     _summarise_test(test)
 
     # ── Learning trials ──────────────────────────────────────────────────────
@@ -215,8 +215,7 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     print(f"\nLearning trials : {len(learning)} rows")
     print(f"  response rate  : {learning['responded'].mean():.1%}")
-    print(f"  cover accuracy : {learning['cover_correct'].dropna().mean():.1%} "
-          f"(of {learning['cover_correct'].notna().sum()} responded trials)")
+    print(f"  cover accuracy : {learning['cover_correct'].mean():.1%} (all trials)")
 
     return test, learning
 
@@ -224,8 +223,8 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
 def _summarise_test(df: pd.DataFrame) -> None:
     print(f"  comparison_type counts:\n"
           + df["comparison_type"].value_counts().to_string().replace("^", "    "))
-    if df["accuracy"].notna().any():
-        print(f"  mean accuracy (T1): {df['accuracy'].mean():.3f}")
+    if df["correct"].notna().any():
+        print(f"  mean correct (T1): {df['correct'].mean():.3f}")
     print(f"  timeout rate: {df['timed_out'].mean():.1%}")
     print(f"  confidence timeout rate: {df['confidence_timed_out'].mean():.1%}")
 
