@@ -4,4 +4,5 @@ venv/
 count-lines.sh
 data/results/
 data/pilot_results/
+data/to_review/
 .Rhistory
