@@ -7,7 +7,7 @@ Loads combined_raw.csv, cleans types, derives analysis variables, and outputs:
     data/results/learning_trials.csv  ← cover-task trials (supplementary)
 
 Derived variables added to test_trials:
-    correct       1/0 for T1 trials (chose plausible option); NaN for T0/T2 and timeouts
+    correct       1/0 for T1 trials (chose plausible option); 0 for T1 timeouts; NaN for T0/T2
     confidence_z  confidence_response z-scored within each participant
 
 Usage:
