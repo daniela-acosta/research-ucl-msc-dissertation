@@ -38,8 +38,6 @@ testing <- testing %>%
     comparison_type = factor(comparison_type, levels = c("T1", "T0", "T2")),
   )
 
-glimpse(learning)
-
 
 # SET CONSTANTS
 blocks <- 4
@@ -319,17 +317,44 @@ modeled_rt_by_block$predicted_prob <- predict(res_1_b1, newdata = modeled_rt_by_
 
 # ANALYSIS 2: LMEM effect of block on confidence and confdiff
 
-res_1_c <- lmer(mean_confidence ~ block + (1|participant_id), data = t1_confidence)
+res_2_a <- lmer(mean_confidence ~ block + (1|participant_id), data = t1_confidence)
 summary(res_2_a)
 
-res_1_d <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
+res_2_b <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
 summary(res_2_b)
 
-res_1_e <- lmer(mean_confidence ~ block + (1|participant_id), data = t0_confidence)
+res_2_c <- lmer(mean_confidence ~ block + (1|participant_id), data = t0_confidence)
 summary(res_2_c)
 
-res_1_f <- lmer(mean_confidence ~ block + (1|participant_id), data = t2_confidence)
-summary(res_2_e)
+res_2_d <- lmer(mean_confidence ~ block + (1|participant_id), data = t2_confidence)
+summary(res_2_d)
 
 # ANALYSIS 3: LMEM effect of block n on accuracy at block n+1, controling for accuracy at block n
 # at this point the relationship between block and accuracy is not significant, so holding off on this for now
+
+
+# ANALYSIS 4: LMEM effect of block and destination community on accuracy and RT
+
+res_4_a <- glmer(correct ~ block * correct_dest_community + (1|participant_id), data = t1_testing, family = binomial)
+summary(res_4_a)
+
+res_4_b <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id), data = t1_testing)
+summary(res_4_b)
+
+# ANALYSIS 5: LMEM effect of block and destination node type on accuracy and RT
+
+res_5_a <- glmer(correct ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing, family = binomial)
+summary(res_5_a)
+
+res_5_b <- lmer(log(rt) ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing)
+summary(res_5_b)
+
+# ANALYSIS 6: 
+
+
+
+
+
+
+
+
