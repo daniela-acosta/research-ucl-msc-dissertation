@@ -7,8 +7,10 @@ Loads combined_raw.csv, cleans types, derives analysis variables, and outputs:
     data/results/learning_trials.csv  ← cover-task trials (supplementary)
 
 Derived variables added to test_trials:
-    correct       1/0 for T1 trials (chose plausible option); 0 for T1 timeouts; NaN for T0/T2
-    confidence_z  confidence_response z-scored within each participant
+    correct                 1/0 for T1 trials (chose plausible option); 0 for T1 timeouts; NaN for T0/T2
+    confidence_z            confidence_response z-scored within each participant
+    correct_dest_community  W or X — plausible option's community relation to base node; NaN for T0/T2
+    correct_dest_node_type  B or NB — plausible option's node type; NaN for T0/T2
 
 Usage:
     python data_analysis/scripts/preprocess.py
@@ -87,6 +89,7 @@ TEST_COLS = [
     "stimulus_config",
     # derived
     "correct", "confidence_z",
+    "correct_dest_community", "correct_dest_node_type",
 ]
 
 LEARNING_COLS = [
@@ -154,6 +157,38 @@ def add_correct(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_correct_option_properties(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    correct_dest_community: W (within) or X (cross-community) for the plausible option.
+    correct_dest_node_type: B (boundary) or NB (non-boundary) for the plausible option.
+    Both are NaN for T0 (no plausible option) and T2 (both options plausible).
+    Derived by parsing the comparison_pair_tag, e.g. 'NB1WB__NB2XB'.
+    """
+    tags = df["comparison_pair_tag"].str.split("__", expand=True)
+    tag_a, tag_b = tags[0], tags[1]
+
+    # Regex: (base_type)(steps)(W|X)(NB|B) — try NB before B in dest group
+    _wc  = r"^(?:NB|B)\d(W|X)(?:NB|B)$"   # captures within-code
+    _dt  = r"^(?:NB|B)\d(?:W|X)(NB|B)$"   # captures dest node type
+
+    wc_a = tag_a.str.extract(_wc, expand=False)
+    dt_a = tag_a.str.extract(_dt, expand=False)
+    wc_b = tag_b.str.extract(_wc, expand=False)
+    dt_b = tag_b.str.extract(_dt, expand=False)
+
+    is_a = df["option_a_plausible"].fillna(False).astype(bool)
+    is_b = df["option_b_plausible"].fillna(False).astype(bool)
+    is_t1 = is_a ^ is_b  # exactly one plausible → T1
+
+    df["correct_dest_community"] = pd.NA
+    df["correct_dest_node_type"] = pd.NA
+    df.loc[is_t1 & is_a, "correct_dest_community"] = wc_a[is_t1 & is_a]
+    df.loc[is_t1 & is_a, "correct_dest_node_type"] = dt_a[is_t1 & is_a]
+    df.loc[is_t1 & is_b, "correct_dest_community"] = wc_b[is_t1 & is_b]
+    df.loc[is_t1 & is_b, "correct_dest_node_type"] = dt_b[is_t1 & is_b]
+    return df
+
+
 def add_confidence_z(df: pd.DataFrame) -> pd.DataFrame:
     """
     confidence_z: confidence_response z-scored within each participant.
@@ -198,6 +233,7 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     # ── Test trials ─────────────────────────────────────────────────────────
     test = raw[raw["trial_type_label"] == "test"].copy()
     test = add_correct(test)
+    test = add_correct_option_properties(test)
     test = add_confidence_z(test)
     test = test[[c for c in TEST_COLS if c in test.columns]].copy()
     test.reset_index(drop=True, inplace=True)
