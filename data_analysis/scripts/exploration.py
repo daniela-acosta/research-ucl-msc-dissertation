@@ -18,6 +18,13 @@ parser.add_argument(
     help="Directory containing learning_trials.csv and test_trials.csv, and where plots are saved. "
          "Default: ../data/results"
 )
+parser.add_argument(
+    "--exclude", "-e",
+    nargs="+",
+    default=[],
+    metavar="PARTICIPANT_ID",
+    help="One or more participant_ids to exclude from all plots and tables."
+)
 args = parser.parse_args()
 
 DATA_DIR = args.data_dir.rstrip("/")
@@ -46,10 +53,18 @@ tt = pd.read_csv(f"{DATA_DIR}/test_trials.csv")
 
 # Older data collections lack confidence_slider_start (logged from a later build).
 # Fall back to 50 (slider midpoint) so downstream analyses degrade gracefully.
+# _slider_start_real tracks which rows had a genuine logged value (used for correlation).
 if "confidence_slider_start" not in tt.columns:
     tt["confidence_slider_start"] = 50
+    tt["_slider_start_real"] = False
 else:
+    tt["_slider_start_real"] = tt["confidence_slider_start"].notna()
     tt["confidence_slider_start"] = tt["confidence_slider_start"].fillna(50)
+
+if args.exclude:
+    ct = ct[~ct["participant_id"].isin(args.exclude)]
+    tt = tt[~tt["participant_id"].isin(args.exclude)]
+    print(f"Excluding participants: {args.exclude}")
 
 if args.participant:
     if args.participant not in ct["participant_id"].values and \
@@ -233,8 +248,9 @@ for title, cols in _cv_sections:
 _conf_rows = tt[
     (tt["timed_out"] == False) &
     tt["confidence_response"].notna() &
-    tt["confidence_slider_start"].notna()
+    tt["_slider_start_real"]  # exclude fallback-filled values (slider_start was not logged)
 ].copy()
+
 
 _conf_corr_rows = []
 for pid, grp in _conf_rows.groupby("participant_id"):
@@ -282,6 +298,20 @@ qtype_res = (
 )
 print("\n── BY QUESTION TYPE (all participants, all blocks) ──")
 print(qtype_res.to_string(index=False))
+
+acc_by_cat_pid = (
+    tt[(tt["timed_out"] == False) & (tt["comparison_type"] == "T1")]
+    .groupby(["participant_id", "comparison_pair_tag"])
+    .agg(correct=("correct", "mean"), n=("correct", "count"))
+    .round(3)
+    .reset_index()
+    .pivot(index="participant_id", columns="comparison_pair_tag", values="correct")
+    .reindex(columns=[c for c in T1_ORDER if c in tt["comparison_pair_tag"].values])
+    .round(3)
+    .reset_index()
+)
+print("\n── T1 ACCURACY BY CATEGORY PER PARTICIPANT ──")
+print(with_totals(acc_by_cat_pid).to_string(index=False))
 
 type_res = (
     tt[tt["timed_out"] == False]
