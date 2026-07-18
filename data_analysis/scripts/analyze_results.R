@@ -241,7 +241,7 @@ participants_graph_config <- demographics %>%
   )
 
 
-# PREP DATA FOR ANALYSIS
+# PREP DATA FOR ANALYSES
 t1_testing <- testing %>%
   filter(comparison_type == "T1")
 
@@ -276,7 +276,7 @@ t2_confidence <- testing %>%
 
 
 
-# ANALYSIS 1: LMEM effect of block on DVs
+# ANALYSIS 1: LMEM effect of block on accuracy and RT
 
 # ---accuracy---
 # approach 1 - use lmer on accuracy per participant/block
@@ -301,7 +301,7 @@ t2_confidence <- testing %>%
 # adjust model (1 is preferred, 2 is fallback)
 res_1_a1 <- glmer(correct ~ block + (1 + block|participant_id), data = t1_testing, family = binomial)
 res_1_a2 <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
-summary(res_1_a1)
+summary(res_1_a2)
 
 # see predicted probability of accuracy by block
 modeled_acc_by_block <- data.frame(block = 1:4)
@@ -316,22 +316,20 @@ summary(res_1_b)
 modeled_rt_by_block <- data.frame(block = 1:4)
 modeled_rt_by_block$predicted_prob <- predict(res_1_b1, newdata = modeled_rt_by_block, re.form = NA, type = "response")
 
-# ---confidence---
+
+# ANALYSIS 2: LMEM effect of block on confidence and confdiff
+
 res_1_c <- lmer(mean_confidence ~ block + (1|participant_id), data = t1_confidence)
-summary(res_1_c)
+summary(res_2_a)
 
 res_1_d <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
-summary(res_1_d)
+summary(res_2_b)
 
 res_1_e <- lmer(mean_confidence ~ block + (1|participant_id), data = t0_confidence)
-summary(res_1_e)
+summary(res_2_c)
 
 res_1_f <- lmer(mean_confidence ~ block + (1|participant_id), data = t2_confidence)
-summary(res_1_f)
+summary(res_2_e)
 
-
-
-
-
-
-
+# ANALYSIS 3: LMEM effect of block n on accuracy at block n+1, controling for accuracy at block n
+# at this point the relationship between block and accuracy is not significant, so holding off on this for now
