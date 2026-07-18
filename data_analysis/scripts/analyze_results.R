@@ -258,6 +258,23 @@ t1_confidence <- t1_testing %>%
 t1_confdiff <- t1_confidence %>%
   filter(!is.na(confdiff))
 
+t0_confidence <- testing %>%
+  group_by(participant_id, block) %>%
+  filter(comparison_type != "T0") %>%
+  summarise(
+    block_accuracy = sum(correct == 1, na.rm = TRUE) / t1_block_trial_count,
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100
+  )
+
+t2_confidence <- testing %>%
+  group_by(participant_id, block) %>%
+  filter(comparison_type != "T2") %>%
+  summarise(
+    block_accuracy = sum(correct == 1, na.rm = TRUE) / t1_block_trial_count,
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100
+  )
+
+
 
 # ANALYSIS 1: LMEM effect of block on DVs
 
@@ -306,7 +323,11 @@ summary(res_1_c)
 res_1_d <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
 summary(res_1_d)
 
+res_1_e <- lmer(mean_confidence ~ block + (1|participant_id), data = t0_confidence)
+summary(res_1_e)
 
+res_1_f <- lmer(mean_confidence ~ block + (1|participant_id), data = t2_confidence)
+summary(res_1_f)
 
 
 
