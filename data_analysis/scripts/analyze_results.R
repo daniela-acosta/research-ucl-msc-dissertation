@@ -31,7 +31,9 @@ testing <- testing %>%
     chosen_position = factor(chosen_position, levels = c("left", "right")),
     confidence_rt = as.numeric(confidence_rt),
     confidence_response = as.numeric(confidence_response),
-    confidence_slider_start = as.numeric(confidence_slider_start)
+    confidence_slider_start = as.numeric(confidence_slider_start),
+    trial_index = as.numeric(trial_index),
+    block = as.numeric(block)
   )
 
 glimpse(learning)
@@ -161,9 +163,11 @@ conf_excl_3 <- testing %>%
 
 # 4. correlation start<>response r >= 0.9
 conf_excl_4 <- testing %>%
+  filter(!is.na(confidence_slider_start)) %>%
   group_by(participant_id) %>%
   summarise(
-    slider_cor = cor(confidence_slider_start, confidence_response, use = "complete.obs")
+    slider_cor = cor(confidence_slider_start, confidence_response, use = "complete.obs"),
+    n = n()
   ) %>%
   filter(slider_cor >= 0.9) %>%
   pull(participant_id)
@@ -235,8 +239,34 @@ participants_graph_config <- demographics %>%
 
 
 # PREP DATA
-
-
+t1_testing <- testing %>%
+  filter(comparison_type == "T1")
 # ANALYSIS 1: LMEM effect of block on DVs
 
-lmer(block ~ correct)
+# approach 1 - use lmer on accuracy per participant/block
+# (discarded because summarizing accuracy in a single participant-block row removes information and variance)
+
+# # calc accuracy by block
+# accuracy_by_block <- testing %>%
+#   filter(comparison_type == "T1") %>%
+#   group_by(participant_id, block) %>%
+#   summarise(
+#     block_accuracy = sum(correct) / n()
+#   ) %>%
+#   ungroup()
+
+
+# approach 2 - use glmer on whole table (1 trial/row)
+# preferred to keep variance. glmer instead of lmer because response is binary
+# note: glmer with (1 + block|participant_id) is ideal but it may not converge. 
+# in such a case there are additional options to be included in the mdoel, but may need to fall back to simpler one
+
+# adjust model
+res_1 <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
+summary(res_1)
+
+# see predicted probability of accuracy by block
+newdata <- data.frame(block = 1:4)
+newdata$predicted_prob <- predict(res_1, newdata = newdata, re.form = NA, type = "response")
+newdata
+
