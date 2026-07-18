@@ -33,7 +33,9 @@ testing <- testing %>%
     confidence_response = as.numeric(confidence_response),
     confidence_slider_start = as.numeric(confidence_slider_start),
     trial_index = as.numeric(trial_index),
-    block = as.numeric(block)
+    block_reported = as.numeric(block),
+    block = block_reported - 1,
+    comparison_type = factor(comparison_type, levels = c("T1", "T0", "T2")),
   )
 
 glimpse(learning)
@@ -45,6 +47,7 @@ walk_length <- 48
 questions_per_block <- 36
 learning_trial_count <- blocks * walk_length
 testing_trial_count <- blocks * questions_per_block
+t1_block_trial_count <- 24
 
 #--for sanity checks--
 og_learning_count <- count(learning) %>% pull(n)
@@ -238,11 +241,27 @@ participants_graph_config <- demographics %>%
   )
 
 
-# PREP DATA
+# PREP DATA FOR ANALYSIS
 t1_testing <- testing %>%
   filter(comparison_type == "T1")
+
+t1_confidence <- t1_testing %>%
+  group_by(participant_id, block) %>%
+  summarise(
+    block_accuracy = sum(correct == 1, na.rm = TRUE) / t1_block_trial_count,
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
+    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
+    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
+    confdiff = mean_confidence_correct - mean_confidence_incorrect
+    )
+
+t1_confdiff <- t1_confidence %>%
+  filter(!is.na(confdiff))
+
+
 # ANALYSIS 1: LMEM effect of block on DVs
 
+# ---accuracy---
 # approach 1 - use lmer on accuracy per participant/block
 # (discarded because summarizing accuracy in a single participant-block row removes information and variance)
 
@@ -258,15 +277,40 @@ t1_testing <- testing %>%
 
 # approach 2 - use glmer on whole table (1 trial/row)
 # preferred to keep variance. glmer instead of lmer because response is binary
-# note: glmer with (1 + block|participant_id) is ideal but it may not converge. 
+# note: glmer with (1 + block|participant_id) is ideal but it may not converge, so need to check for isSingular(res_1_a) 
 # in such a case there are additional options to be included in the mdoel, but may need to fall back to simpler one
+# also check with anova(res_1_b, res_1_a) to see if chisq is significant
 
-# adjust model
-res_1 <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
-summary(res_1)
+# adjust model (1 is preferred, 2 is fallback)
+res_1_a1 <- glmer(correct ~ block + (1 + block|participant_id), data = t1_testing, family = binomial)
+res_1_a2 <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
+summary(res_1_a1)
 
 # see predicted probability of accuracy by block
-newdata <- data.frame(block = 1:4)
-newdata$predicted_prob <- predict(res_1, newdata = newdata, re.form = NA, type = "response")
-newdata
+modeled_acc_by_block <- data.frame(block = 1:4)
+modeled_acc_by_block$predicted_prob <- predict(res_1, newdata = modeled_acc_by_block, re.form = NA, type = "response")
+
+# ---rt---
+# may need to do log(rt)--need to understand that
+res_1_b <- lmer(log(rt) ~ block * comparison_type + (1 + block|participant_id), data = testing)
+summary(res_1_b)
+
+# see predicted probability of accuracy by block
+modeled_rt_by_block <- data.frame(block = 1:4)
+modeled_rt_by_block$predicted_prob <- predict(res_1_b1, newdata = modeled_rt_by_block, re.form = NA, type = "response")
+
+# ---confidence---
+res_1_c <- lmer(mean_confidence ~ block + (1|participant_id), data = t1_confidence)
+summary(res_1_c)
+
+res_1_d <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
+summary(res_1_d)
+
+
+
+
+
+
+
+
 
