@@ -2,6 +2,7 @@
 library("tidyverse")
 library("lme4")
 library("lmerTest")
+library("emmeans")
 
 theme_set(
   theme_bw(base_size = 15) +
@@ -36,7 +37,7 @@ testing <- testing %>%
     trial_index = as.numeric(trial_index),
     block_reported = as.numeric(block),
     block = block_reported - 1,
-    comparison_type = factor(comparison_type, levels = c("T1", "T0", "T2"))
+    comparison_type = factor(comparison_type, levels = c("T1", "T0", "T2")),
     correct = as.numeric(correct)
   )
 
@@ -312,7 +313,7 @@ modeled_acc_by_block$predicted_prob <- predict(res_1, newdata = modeled_acc_by_b
 res_1_b <- lmer(log(rt) ~ block * comparison_type + (1 + block|participant_id), data = testing)
 summary(res_1_b)
 
-# see predicted probability of accuracy by block
+# see predicted probability of rt by block
 modeled_rt_by_block <- data.frame(block = 1:4)
 modeled_rt_by_block$predicted_prob <- predict(res_1_b1, newdata = modeled_rt_by_block, re.form = NA, type = "response")
 
@@ -369,23 +370,35 @@ summary(res_7_a)
 res_7_b <- lmer(log(rt) ~ block * comparison_pair_tag + (1 + block|participant_id), data = testing)
 summary(res_7_b)
 
-# confidence... the data tables need comparison_pair_tag, add it or better skip this?
-# res_6_c <- lmer(mean_confidence ~ block * comparison_pair_tag + (1|participant_id), data = t1_confidence)
-# summary(res_6_c)
-# 
-# res_6_d <- lmer(confdiff ~ block * comparison_pair_tag + (1|participant_id), data = t1_confdiff)
-# summary(res_6_d)
-# 
-# res_6_e <- lmer(mean_confidence ~ block * comparison_pair_tag + (1|participant_id), data = t0_confidence)
-# summary(res_6_e)
-# 
-# res_6_f <- lmer(mean_confidence ~ block * comparison_pair_tag + (1|participant_id), data = t2_confidence)
-# summary(res_6_f)
 
+# ANALYSIS 8: check that graph config is not a confounding factor by re-running main analyses with it as variable
 
+t1_confidence_config <- t1_testing %>%
+  group_by(participant_id, block, stimulus_config) %>%
+  summarise(
+    block_accuracy_config = sum(correct == 1, na.rm = TRUE) / t1_block_trial_count,
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
+    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
+    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
+    confdiff = mean_confidence_correct - mean_confidence_incorrect,
+  )
 
+t1_confdiff_config <- t1_confidence_config %>%
+  filter(!is.na(confdiff))
 
+res_8_a <- glmer(correct ~ block + stimulus_config + (1 |participant_id), data = t1_testing, family = binomial)
+summary(res_8_a)
 
+emmeans(res_8_a, ~ stimulus_config, type = "response")
+emm
+pairs(emm)
 
+res_8_b <- lmer(log(rt) ~ block  + stimulus_config + (1 + block|participant_id), data = t1_testing)
+summary(res_8_b)
 
+res_8_c <- lmer(mean_confidence ~ block + stimulus_config + (1|participant_id), data = t1_confidence_config)
+summary(res_2_a)
+
+res_8_d <- lmer(confdiff ~ block + stimulus_config + (1|participant_id), data = t1_confdiff_config)
+summary(res_2_b)
 
