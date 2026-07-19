@@ -21,7 +21,8 @@ learning <- learning %>%
   mutate(
     participant_id = factor(participant_id),
     cover_response = factor(cover_response, levels = c("f", "j"), labels = c("symmetric", "asymmetric")),
-    cover_rt = as.numeric(cover_rt)
+    cover_rt = as.numeric(cover_rt),
+    cover_correct = as.numeric(cover_correct)
   )
 
 testing <- testing %>%
@@ -35,7 +36,8 @@ testing <- testing %>%
     trial_index = as.numeric(trial_index),
     block_reported = as.numeric(block),
     block = block_reported - 1,
-    comparison_type = factor(comparison_type, levels = c("T1", "T0", "T2")),
+    comparison_type = factor(comparison_type, levels = c("T1", "T0", "T2"))
+    correct = as.numeric(correct)
   )
 
 
@@ -250,7 +252,7 @@ t1_confidence <- t1_testing %>%
     mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
     mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
     mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
-    confdiff = mean_confidence_correct - mean_confidence_incorrect
+    confdiff = mean_confidence_correct - mean_confidence_incorrect,
     )
 
 t1_confdiff <- t1_confidence %>%
@@ -349,7 +351,36 @@ summary(res_5_a)
 res_5_b <- lmer(log(rt) ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing)
 summary(res_5_b)
 
-# ANALYSIS 6: 
+
+# ANALYSIS 6: LMEM effect of block on accuracy and RT of learniing phase
+res_6_a <- glmer(cover_correct ~ block + (1|participant_id), data = learning, family = binomial)
+summary(res_6_a)
+
+res_6_b <- lmer(log(cover_rt) ~ block + (1|participant_id), data = learning)
+summary(res_6_b)
+
+
+# ANALYSIS 7: LMEM effect of block and question category on accuracy and RT
+# this was proposed as exploratory, and not with LMEM, only graphs
+# need to add levels to comparison pair tag and decide whether using category is better
+res_7_a <- glmer(correct ~ block * comparison_pair_tag + (1 |participant_id), data = t1_testing, family = binomial)
+summary(res_7_a)
+
+res_7_b <- lmer(log(rt) ~ block * comparison_pair_tag + (1 + block|participant_id), data = testing)
+summary(res_7_b)
+
+# confidence... the data tables need comparison_pair_tag, add it or better skip this?
+# res_6_c <- lmer(mean_confidence ~ block * comparison_pair_tag + (1|participant_id), data = t1_confidence)
+# summary(res_6_c)
+# 
+# res_6_d <- lmer(confdiff ~ block * comparison_pair_tag + (1|participant_id), data = t1_confdiff)
+# summary(res_6_d)
+# 
+# res_6_e <- lmer(mean_confidence ~ block * comparison_pair_tag + (1|participant_id), data = t0_confidence)
+# summary(res_6_e)
+# 
+# res_6_f <- lmer(mean_confidence ~ block * comparison_pair_tag + (1|participant_id), data = t2_confidence)
+# summary(res_6_f)
 
 
 
