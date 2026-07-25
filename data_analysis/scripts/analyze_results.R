@@ -24,7 +24,9 @@ learning <- learning %>%
     participant_id = factor(participant_id),
     cover_response = factor(cover_response, levels = c("f", "j"), labels = c("symmetric", "asymmetric")),
     cover_rt = as.numeric(cover_rt),
-    cover_correct = as.numeric(cover_correct)
+    cover_correct = as.numeric(cover_correct),
+    block_reported = as.numeric(block),
+    block = block_reported - 1
   )
 
 testing <- testing %>%
@@ -39,7 +41,8 @@ testing <- testing %>%
     block_reported = as.numeric(block),
     block = block_reported - 1,
     comparison_type = factor(comparison_type, levels = c("T1", "T0", "T2")),
-    correct = as.numeric(correct)
+    correct = as.numeric(correct),
+    confidence = confidence_response / 100
   )
 
 
@@ -255,8 +258,25 @@ t1_confidence <- t1_testing %>%
     mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
     mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
     confdiff = mean_confidence_correct - mean_confidence_incorrect,
-    block_avg_rt = mean(rt, na.rm = TRUE)
+    block_avg_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop"
     )
+
+t1_confidence <- t1_confidence %>%
+  arrange(participant_id, block) %>%
+  group_by(participant_id) %>%
+  mutate(
+    prev_confidence = lag(mean_confidence, n = 1),
+    prev_confdiff = lag(confdiff, n = 1),
+    prev_accuracy = lag(block_accuracy, n = 1)
+  ) %>%
+  ungroup()
+
+t1_testing_lagged <- t1_testing %>%
+  left_join(
+    t1_confidence %>% select(participant_id, block, prev_confidence, prev_confdiff, prev_accuracy),
+    by = c("participant_id", "block")
+  )
 
 t1_confdiff <- t1_confidence %>%
   filter(!is.na(confdiff))
@@ -276,6 +296,44 @@ t2_confidence <- testing %>%
     block_accuracy = sum(correct == 1, na.rm = TRUE) / t1_block_trial_count,
     mean_confidence = mean(confidence_response, na.rm = TRUE) / 100
   )
+
+all_confidence <- testing %>%
+  group_by(participant_id, block, comparison_type) %>%
+  summarise(
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100
+  )
+
+learning_by_block <- learning %>%
+  group_by(participant_id, block) %>%
+  summarise(
+    block_accuracy = sum(cover_correct, na.rm = TRUE) / n(),
+    block_rt = mean(cover_rt, na.rm = TRUE)
+  )
+
+t1_confidence_by_dest_community <- t1_testing %>%
+  group_by(participant_id, block, correct_dest_community) %>%
+  summarise(
+    block_accuracy = sum(correct == 1, na.rm = TRUE) / t1_block_trial_count,
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
+    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
+    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
+    confdiff = mean_confidence_correct - mean_confidence_incorrect,
+    block_avg_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+t1_confidence_by_dest_nodetype <- t1_testing %>%
+  group_by(participant_id, block, correct_dest_node_type) %>%
+  summarise(
+    block_accuracy = sum(correct == 1, na.rm = TRUE) / t1_block_trial_count,
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
+    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
+    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
+    confdiff = mean_confidence_correct - mean_confidence_incorrect,
+    block_avg_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop"
+  )
+
 
 
 # ANALYSIS 1: LMEM effect of block on accuracy and RT
@@ -298,26 +356,27 @@ t2_confidence <- testing %>%
 # preferred to keep variance. glmer instead of lmer because response is binary
 # note: glmer with (1 + block|participant_id) is ideal but it may not converge, so need to check for isSingular(res_1_a) 
 # in such a case there are additional options to be included in the mdoel, but may need to fall back to simpler one
-# also check with anova(res_1_b, res_1_a) to see if chisq is significant
 
 # adjust model (1 is preferred, 2 is fallback)
-res_1_a1 <- glmer(correct ~ block + (1 + block|participant_id), data = t1_testing, family = binomial)
-res_1_a2 <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
-summary(res_1_a2)
+# res_1_a1 <- glmer(correct ~ block + (1 + block|participant_id), data = t1_testing, family = binomial) -- didn't converge
+res_1_a <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
+summary(res_1_a)
+plogis(fixef(res_1_a)["(Intercept)"]) # block 0
+plogis(fixef(res_1_a)["(Intercept)"] + fixef(res_1_a)["block"] * 3)  # block 3
 
 # plot
-emm_1_a <- emmeans(res_1_a2, ~ block, at = list(block = 0:3), type = "response")
+emm_1_a <- emmeans(res_1_a, ~ block, at = list(block = 0:3), type = "response")
 emm_1_a_df <- as.data.frame(emm_1_a)
 
-ggplot() +
+plot1a <- ggplot() +
   # individual participant points
   geom_jitter(data = t1_confidence, 
               aes(x = block, y = block_accuracy), 
               width = 0.08, height = 0, 
               color = "gray50", alpha = 0.5, size = 1.5) +
   # model-predicted group trend
-  # geom_ribbon(data = emm_1_a_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL), 
-  #             alpha = 0.15, inherit.aes = FALSE) +
+  geom_ribbon(data = emm_1_a_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL),
+              alpha = 0.15, inherit.aes = FALSE) +
   geom_line(data = emm_1_a_df, aes(x = block, y = prob), 
             color = "black", linewidth = 1.2) +
   geom_point(data = emm_1_a_df, aes(x = block, y = prob), 
@@ -326,177 +385,300 @@ ggplot() +
   labs(y = "Accuracy", x = "Block") +
   theme_minimal()
 
-# see predicted probability of accuracy by block
-modeled_acc_by_block <- data.frame(block = 1:4)
-modeled_acc_by_block$predicted_prob <- predict(res_1_a2, newdata = modeled_acc_by_block, re.form = NA, type = "response")
 
 # ---rt---
-# may need to do log(rt)--need to understand that
-res_1_b <- lmer(log(rt) ~ block * comparison_type + (1 + block|participant_id), data = testing)
-summary(res_1_b)
+res_1_b1 <- lmer(log(rt) ~ block * comparison_type + (1|participant_id), data = testing)
+summary(res_1_b1)
 
-# plot
-emm_1_b1 <- emmeans(res_1_b, ~ block * comparison_type, at = list(block = 0:3), type = "response")
-emm_1_b1_df <- as.data.frame(emm_1_b)
-pairs(emm_1_b1)
-# this doesn't really show any significant difference between blocks and comparison types, so 
-# i will collapse all into a single RT line
+res1b1_speedup <- 1 - exp(fixef(res_1_b1)["block"])
+res1b1_speedup_total <- 1 - exp(fixef(res_1_b1)["block"]) ^ 3
 
-emm_1_b2 <- emmeans(res_1_b, ~ block, at = list(block = 0:3), type = "response")
-emm_1_b2_df <- as.data.frame(emm_1_b2)
+res1b1_T1_block0 <- exp(fixef(res_1_b1)["(Intercept)"])
+res1b1_T2_block0 <- exp(fixef(res_1_b1)["(Intercept)"] + fixef(res_1_b1)["comparison_typeT2"])
 
-ggplot() +
-  # individual participant points, jittered horizontally
-  geom_jitter(data = t1_confidence, 
-              aes(x = block, y = block_avg_rt), 
-              width = 0.08, height = 0, 
-              color = "gray50", alpha = 0.5, size = 1.5) +
-  # model-predicted group trend on top
-  geom_line(data = emm_1_b2_df, aes(x = block, y = response), 
-            color = "black", linewidth = 1.2) +
-  geom_point(data = emm_1_b2_df, aes(x = block, y = response), 
-             color = "black", size = 2.5) +
+emm_1_b1 <- emmeans(res_1_b1, ~ block * comparison_type, at = list(block = 0:3), type = "response")
+emm_1_b1_df <- as.data.frame(emm_1_b1)
+
+plot1b <- ggplot() +
+  # individual participant points, split by comparison type
+  # geom_jitter(data = testing, 
+  #             aes(x = block, y = rt, color = comparison_type),
+  #             width = 0.08, height = 0, alpha = 0.06, size = 1) +
+  # CI ribbon per group
+  geom_ribbon(data = emm_1_b1_df, 
+              aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL, 
+                  fill = comparison_type, group = comparison_type),
+              alpha = 0.15) +
+  # model-predicted trend lines
+  geom_line(data = emm_1_b1_df, 
+            aes(x = block, y = response, color = comparison_type, group = comparison_type),
+            linewidth = 1.2) +
+  geom_point(data = emm_1_b1_df, 
+             aes(x = block, y = response, color = comparison_type),
+             size = 2.5) +
+  scale_color_manual(values = c("T0" = "darkorange", "T1" = "steelblue", "T2" = "forestgreen"),
+                     name = NULL) +
+  scale_fill_manual(values = c("T0" = "darkorange", "T1" = "steelblue", "T2" = "forestgreen"), 
+                    guide = "none") +
   scale_x_continuous(breaks = 0:3, labels = 1:4) +
   labs(y = "Reaction Time (ms)", x = "Block") +
-  theme_minimal()
-
-# see predicted probability of rt by block
-modeled_rt_by_block <- data.frame(block = 1:4)
-modeled_rt_by_block$predicted_prob <- predict(res_1_b1, newdata = modeled_rt_by_block, re.form = NA, type = "response")
+  theme_minimal() +
+  theme(legend.position = "bottom")
 
 
-# ANALYSIS 2: LMEM effect of block on confidence and confdiff
+# this is for graphs if we only want all T0/T1/T2 together
+# res_1_b2 <- lmer(log(rt) ~ block + (1|participant_id), data = testing)
+# summary(res_1_b2)
+# 
+# emm_1_b2 <- emmeans(res_1_b2, ~ block, at = list(block = 0:3), type = "response")
+# emm_1_b2_df <- as.data.frame(emm_1_b2)
+# 
+# # plot
+# plot1b <- ggplot() +
+#   # individual participant points, jittered horizontally
+#   geom_jitter(data = t1_confidence, 
+#               aes(x = block, y = block_avg_rt), 
+#               width = 0.08, height = 0, 
+#               color = "gray50", alpha = 0.5, size = 1.5) +
+#   # model-predicted group trend on top
+#   geom_ribbon(data = emm_1_b2_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL),
+#               alpha = 0.15, inherit.aes = FALSE) +
+#   geom_line(data = emm_1_b2_df, aes(x = block, y = response), 
+#             color = "black", linewidth = 1.2) +
+#   geom_point(data = emm_1_b2_df, aes(x = block, y = response), 
+#              color = "black", size = 2.5) +
+#   scale_x_continuous(breaks = 0:3, labels = 1:4) +
+#   labs(y = "Reaction Time (ms)", x = "Block") +
+#   theme_minimal()
 
-# ---confidence t1---
-res_2_a <- lmer(mean_confidence ~ block + (1|participant_id), data = t1_confidence)
-summary(res_2_a)
+cowplot::plot_grid(plot1a, plot1b, labels = c("A", "B"))
+
+# ---confidence all---
+res_1_c <- lmer(mean_confidence ~ block * comparison_type + (1|participant_id), data = all_confidence)
+summary(res_1_c)
 
 # plot
-emm_2_a <- emmeans(res_2_a, ~ block, at = list(block = 0:3), type = "response")
-emm_2_a_df <- as.data.frame(emm_2_a)
+emm_1_c <- emmeans(res_1_c, ~ block, at = list(block = 0:3), type = "response")
+emm_1_c_df <- as.data.frame(emm_1_c)
 
-ggplot() +
+plot1c <- ggplot() +
   # individual participant points
-  geom_jitter(data = participant_df, 
+  geom_jitter(data = t1_confidence, 
               aes(x = block, y = mean_confidence), 
               width = 0.08, height = 0, 
               color = "gray50", alpha = 0.5, size = 1.5) +
   # model-predicted group trend
-  geom_line(data = emm_2_a_df, aes(x = block, y = emmean), 
+  geom_ribbon(data = emm_1_c_df, aes(x = block, ymin = lower.CL, ymax = upper.CL),
+              alpha = 0.15, inherit.aes = FALSE) +
+  geom_line(data = emm_1_c_df, aes(x = block, y = emmean), 
             color = "black", linewidth = 1.2) +
-  geom_point(data = emm_2_a_df, aes(x = block, y = emmean), 
+  geom_point(data = emm_1_c_df, aes(x = block, y = emmean), 
              color = "black", size = 2.5) +
   scale_x_continuous(breaks = 0:3, labels = 1:4) +
   labs(y = "Confidence", x = "Block") +
   theme_minimal()
 
 # ---confdiff t1---
-res_2_b <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
-summary(res_2_b)
+res_1_d <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
+summary(res_1_d)
 
 # plot
-emm_2_b <- emmeans(res_2_b, ~ block, at = list(block = 0:3), type = "response")
-emm_2_b_df <- as.data.frame(emm_2_b)
+emm_1_d <- emmeans(res_1_d, ~ block, at = list(block = 0:3), type = "response")
+emm_1_d_df <- as.data.frame(emm_1_d)
 
-ggplot() +
+plot1d <- ggplot() +
   # individual participant points
   geom_jitter(data = t1_confidence, 
               aes(x = block, y = confdiff), 
               width = 0.08, height = 0, 
               color = "gray50", alpha = 0.5, size = 1.5) +
   # model-predicted group trend
-  geom_line(data = emm_2_b_df, aes(x = block, y = emmean), 
+  geom_ribbon(data = emm_1_d_df, aes(x = block, ymin = lower.CL, ymax = upper.CL),
+              alpha = 0.15, inherit.aes = FALSE) +
+  geom_line(data = emm_1_d_df, aes(x = block, y = emmean), 
             color = "black", linewidth = 1.2) +
-  geom_point(data = emm_2_b_df, aes(x = block, y = emmean), 
+  geom_point(data = emm_1_d_df, aes(x = block, y = emmean), 
              color = "black", size = 2.5) +
   scale_x_continuous(breaks = 0:3, labels = 1:4) +
   labs(y = "ConfDiff", x = "Block") +
   theme_minimal()
 
-# ---confidence t0---
-res_2_c <- lmer(mean_confidence ~ block + (1|participant_id), data = t0_confidence)
-summary(res_2_c)
+# ---"better" plots---
+# question -- this was built with the model fit for confidence by correct/incorrect. does it make sense?
+# would the line showing the actual data work best? when are fitted menas better than actual means?
 
-# plot
-emm_2_c <- emmeans(res_2_c, ~ block, at = list(block = 0:3), type = "response")
-emm_2_c_df <- as.data.frame(emm_2_c)
+res_1_c_bycorrect <- lmer(confidence ~ block * correct + (1|participant_id), data = testing)
 
-ggplot() +
-  # individual participant points
-  geom_jitter(data = t0_confidence, 
-              aes(x = block, y = mean_confidence), 
-              width = 0.08, height = 0, 
-              color = "gray50", alpha = 0.5, size = 1.5) +
-  # model-predicted group trend
-  geom_line(data = emm_2_c_df, aes(x = block, y = emmean), 
-            color = "black", linewidth = 1.2) +
-  geom_point(data = emm_2_c_df, aes(x = block, y = emmean), 
-             color = "black", size = 2.5) +
+emm_bycorrect <- emmeans(res_1_c_bycorrect, ~ block * correct, at = list(block = 0:3))
+emm_bycorrect_df <- as.data.frame(emm_bycorrect)
+
+plot1e <- ggplot() +
+  geom_ribbon(data = emm_bycorrect_df, 
+              aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL, 
+                  group = factor(correct), fill = factor(correct)),
+              alpha = 0.15) +
+  geom_line(data = emm_1_c_df, aes(x = block, y = emmean, color = "Overall"), 
+            linewidth = 1.2) +
+  geom_point(data = emm_1_c_df, aes(x = block, y = emmean, color = "Overall"), 
+             size = 2.5) +
+  geom_line(data = emm_bycorrect_df, 
+            aes(x = block, y = emmean, color = factor(correct), group = correct), 
+            linewidth = 1) +
+  geom_point(data = emm_bycorrect_df, 
+             aes(x = block, y = emmean, color = factor(correct)), 
+             size = 2) +
+  scale_color_manual(values = c("0" = "firebrick", "1" = "steelblue", "Overall" = "black"),
+                     labels = c("Incorrect", "Correct", "Overall"),
+                     name = NULL) +
+  scale_fill_manual(values = c("0" = "firebrick", "1" = "steelblue"), guide = "none") +
   scale_x_continuous(breaks = 0:3, labels = 1:4) +
   labs(y = "Confidence", x = "Block") +
-  theme_minimal()
+  theme_minimal() +
+  theme(legend.position = "bottom")
 
-# ---t2 confidence---
-res_2_d <- lmer(mean_confidence ~ block + (1|participant_id), data = t2_confidence)
-summary(res_2_d)
+cowplot::plot_grid(plot1e, plot1d, labels = c("A", "B"))
 
-# plot
-emm_2_d <- emmeans(res_2_c, ~ block, at = list(block = 0:3), type = "response")
-emm_2_d_df <- as.data.frame(emm_2_d)
-
-ggplot() +
-  # individual participant points
-  geom_jitter(data = t2_confidence, 
-              aes(x = block, y = mean_confidence), 
-              width = 0.08, height = 0, 
-              color = "gray50", alpha = 0.5, size = 1.5) +
-  # model-predicted group trend
-  geom_line(data = emm_2_d_df, aes(x = block, y = emmean), 
-            color = "black", linewidth = 1.2) +
-  geom_point(data = emm_2_d_df, aes(x = block, y = emmean), 
-             color = "black", size = 2.5) +
-  scale_x_continuous(breaks = 0:3, labels = 1:4) +
-  labs(y = "Confidence", x = "Block") +
-  theme_minimal()
-
-
-# ANALYSIS 3: LMEM effect of block n on accuracy at block n+1, controling for accuracy at block n
+# ANALYSIS 2: LMEM effect of block n on accuracy at block n+1, controling for accuracy at block n
 # at this point the relationship between block and accuracy is not significant, so holding off on this for now
 
+res_2_a <- glmer(
+  correct ~ prev_confidence + prev_accuracy + (1 | participant_id),
+  data = t1_testing_lagged,
+  family = binomial
+)
+summary(res_2_a)
 
-# ANALYSIS 4: LMEM effect of block and destination community on accuracy and RT
+res_2_b <- glmer(
+  correct ~ prev_confdiff + prev_accuracy + (1 | participant_id),
+  data = t1_testing_lagged,
+  family = binomial
+)
+summary(res_2_b)
 
-res_4_a <- glmer(correct ~ block * correct_dest_community + (1|participant_id), data = t1_testing, family = binomial)
+
+# ANALYSIS 3: LMEM effect of block and destination community on accuracy and RT
+
+res_3_a <- glmer(correct ~ block * correct_dest_community + (1|participant_id), data = t1_testing, family = binomial)
+summary(res_3_a)
+
+res_3_b <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id), data = t1_testing)
+summary(res_3_b)
+# looks like W does have a significant change each block for RT. and X's change is different from it (interaction is significant)
+# using emtrends now to see difference bwtween slopes
+
+emtrends(res_3_b, ~ correct_dest_community, var = "block")
+# looks like X is faster even than W. all results on the log scale! so need to convert before interpreting
+
+# plot
+emm_3b <- emmeans(res_3_b, ~ block * correct_dest_community, 
+                  at = list(block = 0:3), type = "response")
+emm_3b_df <- as.data.frame(emm_3b)
+
+plot3 <- ggplot() +
+  # individual participant-level points, faint, split by group
+  # geom_jitter(data = t1_testing, 
+  #             aes(x = block, y = rt, color = correct_dest_community),
+  #             width = 0.08, height = 0, alpha = 0.08, size = 1) +
+  # CI ribbon per group
+  geom_ribbon(data = emm_4b_df, 
+              aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL, 
+                  fill = correct_dest_community, group = correct_dest_community),
+              alpha = 0.15) +
+  # model-predicted trend lines
+  geom_line(data = emm_4b_df, 
+            aes(x = block, y = response, color = correct_dest_community, 
+                group = correct_dest_community),
+            linewidth = 1.2) +
+  geom_point(data = emm_4b_df, 
+             aes(x = block, y = response, color = correct_dest_community),
+             size = 2.5) +
+  scale_color_manual(values = c("W" = "steelblue", "X" = "firebrick"),
+                     labels = c("Within-community (W)", "Cross-community (X)"),
+                     name = NULL) +
+  scale_fill_manual(values = c("W" = "steelblue", "X" = "firebrick"), guide = "none") +
+  scale_x_continuous(breaks = 0:3, labels = 1:4) +
+  labs(y = "Reaction Time (ms)", x = "Block") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+res_3_c <- lmer(mean_confidence ~ block * correct_dest_community + (1|participant_id), data = t1_confidence_by_dest_community)
+summary(res_3_c)
+
+res_3_d <- lmer(confdiff ~ block * correct_dest_community + (1|participant_id), data = t1_confidence_by_dest_community)
+summary(res_3_d)
+
+
+# ANALYSIS 4: LMEM effect of block and destination node type on accuracy and RT
+
+res_4_a <- glmer(correct ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing, family = binomial)
 summary(res_4_a)
 
-res_4_b <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id), data = t1_testing)
+res_4_b <- lmer(log(rt) ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing)
 summary(res_4_b)
 
-# ANALYSIS 5: LMEM effect of block and destination node type on accuracy and RT
+res_4_c <- lmer(mean_confidence ~ block * correct_dest_node_type + (1|participant_id), data = t1_confidence_by_dest_nodetype)
+summary(res_4_c)
 
-res_5_a <- glmer(correct ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing, family = binomial)
+res_4_d <- lmer(confdiff ~ block * correct_dest_node_type + (1|participant_id), data = t1_confidence_by_dest_nodetype)
+summary(res_4_d)
+
+
+# ANALYSIS 5: LMEM effect of block on accuracy and RT of learniing phase
+res_5_a <- glmer(cover_correct ~ block + (1|participant_id), data = learning, family = binomial)
 summary(res_5_a)
 
-res_5_b <- lmer(log(rt) ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing)
+res_5_b <- lmer(log(cover_rt) ~ block + (1|participant_id), data = learning)
 summary(res_5_b)
 
+emm_5_a <- emmeans(res_5_a, ~ block, at = list(block = 0:3), type = "response")
+emm_5_a_df <- as.data.frame(emm_5_a)
 
-# ANALYSIS 6: LMEM effect of block on accuracy and RT of learniing phase
-res_6_a <- glmer(cover_correct ~ block + (1|participant_id), data = learning, family = binomial)
-summary(res_6_a)
+emm_5_b <- emmeans(res_5_b, ~ block, at = list(block = 0:3), type = "response")
+emm_5_b_df <- as.data.frame(emm_5_b)
 
-res_6_b <- lmer(log(cover_rt) ~ block + (1|participant_id), data = learning)
-summary(res_6_b)
+plot5a <- ggplot() +
+  # individual participant points
+  # geom_jitter(data = learning_by_block, 
+  #             aes(x = block, y = block_accuracy), 
+  #             width = 0.08, height = 0, 
+  #             color = "gray50", alpha = 0.5, size = 1.5) +
+  # model-predicted group trend
+  geom_ribbon(data = emm_6_a_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL),
+              alpha = 0.15, inherit.aes = FALSE) +
+  geom_line(data = emm_6_a_df, aes(x = block, y = prob), 
+            color = "black", linewidth = 1.2) +
+  geom_point(data = emm_6_a_df, aes(x = block, y = prob), 
+             color = "black", size = 2.5) +
+  scale_x_continuous(breaks = 0:3, labels = 1:4) +
+  labs(y = "Accuracy", x = "Block") +
+  theme_minimal()
 
+plot5b <- ggplot() +
+  # individual participant points
+  geom_jitter(data = learning_by_block,
+              aes(x = block, y = block_rt),
+              width = 0.08, height = 0,
+              color = "gray50", alpha = 0.5, size = 1.5) +
+  # model-predicted group trend
+  geom_ribbon(data = emm_6_b_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL),
+              alpha = 0.15, inherit.aes = FALSE) +
+  geom_line(data = emm_6_b_df, aes(x = block, y = response), 
+            color = "black", linewidth = 1.2) +
+  geom_point(data = emm_6_b_df, aes(x = block, y = response), 
+             color = "black", size = 2.5) +
+  scale_x_continuous(breaks = 0:3, labels = 1:4) +
+  labs(y = "Reaction Time (ms)", x = "Block") +
+  theme_minimal()
 
-# ANALYSIS 7: LMEM effect of block and question category on accuracy and RT
+# ANALYSIS 6: LMEM effect of block and question category on accuracy and RT
 # this was proposed as exploratory, and not with LMEM, only graphs
 # need to add levels to comparison pair tag and decide whether using category is better
-res_7_a <- glmer(correct ~ block * comparison_pair_tag + (1 |participant_id), data = t1_testing, family = binomial)
-summary(res_7_a)
+res_6_a <- glmer(correct ~ block * comparison_pair_tag + (1 |participant_id), data = t1_testing, family = binomial)
+summary(res_6_a)
 
-res_7_b <- lmer(log(rt) ~ block * comparison_pair_tag + (1 + block|participant_id), data = testing)
+res_7_b <- lmer(log(rt) ~ block * comparison_pair_tag + (1|participant_id), data = testing)
 summary(res_7_b)
+
 # this may not be the best approach, maybe test the effect of number or repetitions (either at learning or at testing?)
 
 # ANALYSIS 8: check that graph config is not a confounding factor by re-running main analyses with it as variable
@@ -517,7 +699,7 @@ t1_confdiff_config <- t1_confidence_config %>%
 res_8_a <- glmer(correct ~ block + stimulus_config + (1 |participant_id), data = t1_testing, family = binomial)
 summary(res_8_a)
 
-emmeans(res_8_a, ~ stimulus_config, type = "response")
+emm <- emmeans(res_8_a, ~ stimulus_config, type = "response")
 emm
 pairs(emm)
 

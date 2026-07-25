@@ -893,8 +893,8 @@ trans_freq = (
     .size().reset_index(name="total_seen")
     .sort_values(["participant_id", "src", "dst"])
 )
-print("\n── TRANSITION FREQUENCIES (learning phase, all blocks) ──")
-print(trans_freq.to_string(index=False))
+# print("\n── TRANSITION FREQUENCIES (learning phase, all blocks) ──")
+# print(trans_freq.to_string(index=False))
 
 print("\n── TRANSITION EXPOSURE DISTRIBUTION (T1 trials, cumulative) ──")
 print(t1_exp[["trans_plausible", "trans_implausible", "trans_diff"]].describe().round(2).to_string())
