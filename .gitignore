@@ -6,3 +6,4 @@ data/results/
 data/pilot_results/
 data/to_review/
 .Rhistory
+test_experiment/results/ratings.csv
