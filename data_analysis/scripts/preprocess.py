@@ -9,8 +9,12 @@ Loads combined_raw.csv, cleans types, derives analysis variables, and outputs:
 Derived variables added to test_trials:
     correct                 1/0 for T1 trials (chose plausible option); 0 for T1 timeouts; NaN for T0/T2
     confidence_z            confidence_response z-scored within each participant
-    correct_dest_community  W or X — plausible option's community relation to base node; NaN for T0/T2
-    correct_dest_node_type  B or NB — plausible option's node type; NaN for T0/T2
+    correct_dest_community       W or X — plausible option's community relation to base node; NaN for T0/T2
+    correct_dest_node_type       B or NB — plausible option's node type; NaN for T0/T2
+    is_dest_community_comparison True if the pair contrasts W vs X destination community
+    is_dest_node_type_comparison True if the pair contrasts B vs NB destination node type
+    chosen_community_is_X        1/0 — did participant choose X option; NaN if not a community comparison or timed out
+    chosen_nodetype_is_B         1/0 — did participant choose B destination; NaN if not a node-type comparison or timed out
 
 Usage:
     python data_analysis/scripts/preprocess.py
@@ -90,6 +94,8 @@ TEST_COLS = [
     # derived
     "correct", "confidence_z",
     "correct_dest_community", "correct_dest_node_type",
+    "is_dest_community_comparison", "is_dest_node_type_comparison",
+    "chosen_community_is_X", "chosen_nodetype_is_B",
 ]
 
 LEARNING_COLS = [
@@ -189,6 +195,49 @@ def add_correct_option_properties(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_choice_bias_variables(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Variables for choice-bias analysis, independent of which option is plausible.
+
+    is_dest_community_comparison: True when one option is a W transition and the
+        other is X (the pair contrasts community membership of the destination).
+    is_dest_node_type_comparison: True when one option has a B destination and the
+        other has NB (the pair contrasts boundary vs non-boundary destination).
+
+    chosen_community_is_X: 1 if the participant chose the X option, 0 if W.
+        NaN when is_dest_community_comparison is False or the trial timed out.
+    chosen_nodetype_is_B: 1 if the participant chose the B destination, 0 if NB.
+        NaN when is_dest_node_type_comparison is False or the trial timed out.
+    """
+    tags = df["comparison_pair_tag"].str.split("__", expand=True)
+    tag_a, tag_b = tags[0], tags[1]
+
+    _wc = r"^(?:NB|B)\d(W|X)(?:NB|B)$"
+    _dt = r"^(?:NB|B)\d(?:W|X)(NB|B)$"
+
+    wc_a = tag_a.str.extract(_wc, expand=False)
+    dt_a = tag_a.str.extract(_dt, expand=False)
+    wc_b = tag_b.str.extract(_wc, expand=False)
+    dt_b = tag_b.str.extract(_dt, expand=False)
+
+    df["is_dest_community_comparison"] = wc_a != wc_b
+    df["is_dest_node_type_comparison"]  = dt_a != dt_b
+
+    chose_a      = df["chose_option_a"].fillna(False).astype(bool)
+    not_timed_out = ~df["timed_out"].fillna(True).astype(bool)
+
+    chosen_wc = np.where(chose_a, wc_a, wc_b)
+    chosen_dt = np.where(chose_a, dt_a, dt_b)
+
+    is_comm = df["is_dest_community_comparison"] & not_timed_out
+    is_nt   = df["is_dest_node_type_comparison"]  & not_timed_out
+
+    df["chosen_community_is_X"] = np.where(is_comm, (chosen_wc == "X").astype(float), np.nan)
+    df["chosen_nodetype_is_B"]  = np.where(is_nt,   (chosen_dt == "B").astype(float), np.nan)
+
+    return df
+
+
 def add_confidence_z(df: pd.DataFrame) -> pd.DataFrame:
     """
     confidence_z: confidence_response z-scored within each participant.
@@ -234,6 +283,7 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     test = raw[raw["trial_type_label"] == "test"].copy()
     test = add_correct(test)
     test = add_correct_option_properties(test)
+    test = add_choice_bias_variables(test)
     test = add_confidence_z(test)
     test = test[[c for c in TEST_COLS if c in test.columns]].copy()
     test.reset_index(drop=True, inplace=True)
