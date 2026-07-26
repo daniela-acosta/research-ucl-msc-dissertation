@@ -10,6 +10,16 @@ theme_set(
     theme(legend.position = "bottom")
 )
 
+# CHECK PACKAGE VERSIONS
+R.version.string
+RStudio.Version()$version
+packageVersion("emmeans")
+packageVersion("lme4")
+packageVersion("lmerTest")
+packageVersion("tidyverse")
+packageVersion("ggplot2")
+# or
+sessionInfo()
 
 # LOAD DATA
 # data_dir <- "../../data/results/"
@@ -42,7 +52,20 @@ testing <- testing %>%
     block = block_reported - 1,
     comparison_type = factor(comparison_type, levels = c("T1", "T0", "T2")),
     correct = as.numeric(correct),
-    confidence = confidence_response / 100
+    confidence = confidence_response / 100,
+    comparison_pair_tag = factor(comparison_pair_tag, 
+                                 levels = c("NB1WB__NB2XB", "NB1WNB__NB2XB", 
+                                            "NB1WB__NB1WNB", "B2WB__B2XNB", 
+                                            "B1WNB__B2WB", "B1WNB__B2XNB",
+                                            "B1XB__B2WB", "B1XB__B2XNB",
+                                            "B1WNB__B1XB"
+                                            ),
+                                 labels = c("(1) NB1WB__NB2XB", "(2) NB1WNB__NB2XB", 
+                                            "(3) NB1WB__NB1WNB", "(4) B2WB__B2XNB", 
+                                            "(5) B1WNB__B2WB", "(6) B1WNB__B2XNB",
+                                            "(7) B1XB__B2WB", "(8) B1XB__B2XNB",
+                                            "(9) B1WNB__B1XB"
+                                            ))
   )
 
 
@@ -53,6 +76,18 @@ questions_per_block <- 36
 learning_trial_count <- blocks * walk_length
 testing_trial_count <- blocks * questions_per_block
 t1_block_trial_count <- 24
+
+category_colors <- c(
+  "(1) NB1WB__NB2XB"   = "#1f77b4",  # category 1 (reference)
+  "(2) NB1WNB__NB2XB"  = "#ff7f0e",  # category 2
+  "(3) NB1WB__NB1WNB"  = "#c893b8",  # category 3 (T2)
+  "(4) B2WB__B2XNB"    = "#a6a65b",  # category 4 (T0)
+  "(5) B1WNB__B2WB"    = "#2ca02c",  # category 5
+  "(6) B1WNB__B2XNB"   = "#d62728",  # category 6
+  "(7) B1XB__B2WB"     = "#9467bd",  # category 7
+  "(8) B1XB__B2XNB"    = "#8c564b",  # category 8
+  "(9) B1WNB__B1XB"    = "#5daeb6"   # category 9 (T2)
+)
 
 #--for sanity checks--
 og_learning_count <- count(learning) %>% pull(n)
@@ -262,22 +297,6 @@ t1_confidence <- t1_testing %>%
     .groups = "drop"
     )
 
-t1_confidence <- t1_confidence %>%
-  arrange(participant_id, block) %>%
-  group_by(participant_id) %>%
-  mutate(
-    prev_confidence = lag(mean_confidence, n = 1),
-    prev_confdiff = lag(confdiff, n = 1),
-    prev_accuracy = lag(block_accuracy, n = 1)
-  ) %>%
-  ungroup()
-
-t1_testing_lagged <- t1_testing %>%
-  left_join(
-    t1_confidence %>% select(participant_id, block, prev_confidence, prev_confdiff, prev_accuracy),
-    by = c("participant_id", "block")
-  )
-
 t1_confdiff <- t1_confidence %>%
   filter(!is.na(confdiff))
 
@@ -297,11 +316,31 @@ t2_confidence <- testing %>%
     mean_confidence = mean(confidence_response, na.rm = TRUE) / 100
   )
 
-all_confidence <- testing %>%
+all_confidence_by_comptype <- testing %>%
   group_by(participant_id, block, comparison_type) %>%
   summarise(
     mean_confidence = mean(confidence_response, na.rm = TRUE) / 100
   )
+
+# for analysis 2
+
+t1_confidence <- t1_confidence %>%
+  arrange(participant_id, block) %>%
+  group_by(participant_id) %>%
+  mutate(
+    prev_confidence = lag(mean_confidence, n = 1),
+    prev_confdiff = lag(confdiff, n = 1),
+    prev_accuracy = lag(block_accuracy, n = 1)
+  ) %>%
+  ungroup()
+
+t1_testing_lagged <- t1_testing %>%
+  left_join(
+    t1_confidence %>% select(participant_id, block, prev_confidence, prev_confdiff, prev_accuracy),
+    by = c("participant_id", "block")
+  )
+
+# for analysis 3
 
 learning_by_block <- learning %>%
   group_by(participant_id, block) %>%
@@ -309,6 +348,8 @@ learning_by_block <- learning %>%
     block_accuracy = sum(cover_correct, na.rm = TRUE) / n(),
     block_rt = mean(cover_rt, na.rm = TRUE)
   )
+
+# for analysis 4
 
 t1_confidence_by_dest_community <- t1_testing %>%
   group_by(participant_id, block, correct_dest_community) %>%
@@ -322,6 +363,8 @@ t1_confidence_by_dest_community <- t1_testing %>%
     .groups = "drop"
   )
 
+# for analysis 5
+
 t1_confidence_by_dest_nodetype <- t1_testing %>%
   group_by(participant_id, block, correct_dest_node_type) %>%
   summarise(
@@ -334,6 +377,54 @@ t1_confidence_by_dest_nodetype <- t1_testing %>%
     .groups = "drop"
   )
 
+# for analysis 6
+all_accuracy_by_cat <- testing %>%
+  group_by(participant_id, comparison_pair_tag, block) %>%
+  summarise(
+    participant_accuracy = mean(correct, na.rm = TRUE),
+    participant_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop") %>%
+  group_by(comparison_pair_tag, block) %>%
+  summarise(
+    mean_accuracy = mean(participant_accuracy),
+    se_acc = sd(participant_accuracy) / sqrt(n()),
+    mean_rt = mean(participant_rt),
+    .groups = "drop"
+  )
+
+t1_accuracy_by_cat <- t1_testing %>%
+  group_by(participant_id, comparison_pair_tag, block) %>%
+  summarise(
+    participant_accuracy = mean(correct, na.rm = TRUE),
+    participant_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop") %>%
+  group_by(comparison_pair_tag, block) %>%
+  summarise(
+    mean_accuracy = mean(participant_accuracy),
+    se_acc = sd(participant_accuracy) / sqrt(n()),
+    mean_rt = mean(participant_rt),
+    .groups = "drop"
+  )
+
+# for analysis 7
+all_confidence_by_questcat <- testing %>%
+  group_by(participant_id, block, comparison_pair_tag) %>%
+  summarise(
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100
+  )
+
+t1_confdiff_by_questcat <- t1_testing %>%
+  group_by(participant_id, block, comparison_pair_tag) %>%
+  summarise(
+    trial_n = n(),
+    mean_accuracy = sum(correct == 1, na.rm = TRUE) / trial_n,
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
+    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
+    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
+    confdiff = mean_confidence_correct - mean_confidence_incorrect,
+    mean_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 
 # ANALYSIS 1: LMEM effect of block on accuracy and RT
@@ -454,7 +545,7 @@ plot1b <- ggplot() +
 cowplot::plot_grid(plot1a, plot1b, labels = c("A", "B"))
 
 # ---confidence all---
-res_1_c <- lmer(mean_confidence ~ block * comparison_type + (1|participant_id), data = all_confidence)
+res_1_c <- lmer(mean_confidence ~ block * comparison_type + (1|participant_id), data = all_confidence_by_comptype)
 summary(res_1_c)
 
 # plot
@@ -643,11 +734,11 @@ plot5a <- ggplot() +
   #             width = 0.08, height = 0, 
   #             color = "gray50", alpha = 0.5, size = 1.5) +
   # model-predicted group trend
-  geom_ribbon(data = emm_6_a_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL),
+  geom_ribbon(data = emm_5_a_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL),
               alpha = 0.15, inherit.aes = FALSE) +
-  geom_line(data = emm_6_a_df, aes(x = block, y = prob), 
+  geom_line(data = emm_5_a_df, aes(x = block, y = prob), 
             color = "black", linewidth = 1.2) +
-  geom_point(data = emm_6_a_df, aes(x = block, y = prob), 
+  geom_point(data = emm_5_a_df, aes(x = block, y = prob), 
              color = "black", size = 2.5) +
   scale_x_continuous(breaks = 0:3, labels = 1:4) +
   labs(y = "Accuracy", x = "Block") +
@@ -660,15 +751,17 @@ plot5b <- ggplot() +
               width = 0.08, height = 0,
               color = "gray50", alpha = 0.5, size = 1.5) +
   # model-predicted group trend
-  geom_ribbon(data = emm_6_b_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL),
+  geom_ribbon(data = emm_5_b_df, aes(x = block, ymin = asymp.LCL, ymax = asymp.UCL),
               alpha = 0.15, inherit.aes = FALSE) +
-  geom_line(data = emm_6_b_df, aes(x = block, y = response), 
+  geom_line(data = emm_5_b_df, aes(x = block, y = response), 
             color = "black", linewidth = 1.2) +
-  geom_point(data = emm_6_b_df, aes(x = block, y = response), 
+  geom_point(data = emm_5_b_df, aes(x = block, y = response), 
              color = "black", size = 2.5) +
   scale_x_continuous(breaks = 0:3, labels = 1:4) +
   labs(y = "Reaction Time (ms)", x = "Block") +
   theme_minimal()
+
+cowplot::plot_grid(plot5a, plot5b, labels = c("A", "B"))
 
 # ANALYSIS 6: LMEM effect of block and question category on accuracy and RT
 # this was proposed as exploratory, and not with LMEM, only graphs
@@ -676,10 +769,62 @@ plot5b <- ggplot() +
 res_6_a <- glmer(correct ~ block * comparison_pair_tag + (1 |participant_id), data = t1_testing, family = binomial)
 summary(res_6_a)
 
-res_7_b <- lmer(log(rt) ~ block * comparison_pair_tag + (1|participant_id), data = testing)
-summary(res_7_b)
+res_6a_coefs <- as.data.frame(summary(res_6_a)$coefficients)
+res_6a_cat_rows <- res_6a_coefs[grepl("comparison_pair_tag", rownames(res_6a_coefs)), ]
+res_6a_cat_rows$p_adj_holm <- p.adjust(res_6a_cat_rows$`Pr(>|z|)`, method = "holm")
 
-# this may not be the best approach, maybe test the effect of number or repetitions (either at learning or at testing?)
+# graph of raw data
+
+plot6a <- ggplot(t1_accuracy_by_cat, aes(x = block, y = mean_accuracy, 
+                                           color = comparison_pair_tag, group = comparison_pair_tag)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  # geom_errorbar(aes(ymin = mean_accuracy - se, ymax = mean_accuracy + se), width = 0.1) +
+  scale_color_manual(values = category_colors, name = "Question category") +
+  scale_x_continuous(breaks = 0:3, labels = 1:4) +
+  labs(y = "Mean Accuracy", x = "Block") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+# not sure if error bars should be added or not, as this is exploratory and they seem to just add noise
+
+
+res_6b <- lmer(log(rt) ~ block * comparison_pair_tag + (1|participant_id), data = testing)
+summary(res_6b)
+
+res_6b_coefs <- as.data.frame(summary(res_6b)$coefficients)
+res_6b_cat_rows <- res_6b_coefs[grepl("comparison_pair_tag", rownames(res_6b_coefs)), ]
+res_6b_cat_rows$p_adj_holm <- p.adjust(res_6b_cat_rows$`Pr(>|t|)`, method = "holm")
+
+plot6b <- ggplot(all_accuracy_by_cat, aes(x = block, y = mean_rt, 
+                                         color = comparison_pair_tag, group = comparison_pair_tag)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  scale_color_manual(values = category_colors, name = "Question category") +
+  scale_x_continuous(breaks = 0:3, labels = 1:4) +
+  labs(y = "Mean Reactoin Time (ms)", x = "Block") +
+  theme_minimal() +
+  theme(legend.position = "bottom") + 
+  guides(color = guide_legend(nrow = 2))
+
+
+res_6c <- lmer(mean_confidence ~ block * comparison_pair_tag + (1|participant_id), data = all_confidence_by_questcat)
+summary(res_6c)
+
+res_6d <- lmer(confdiff ~ block * comparison_pair_tag + (1|participant_id), data = t1_confdiff_by_questcat)
+summary(res_6d)
+
+res_6d_coefs <- as.data.frame(summary(res_6d)$coefficients)
+res_6d_cat_rows <- res_6d_coefs[grepl("comparison_pair_tag", rownames(res_6d_coefs)), ]
+res_6d_cat_rows$p_adj_holm <- p.adjust(res_6d_cat_rows$`Pr(>|t|)`, method = "holm")
+
+# check distribution of nan's for confdiff by question
+sum(is.nan(t1_confdiff_by_questcat$confdiff)) / nrow(t1_confdiff_by_questcat)
+
+t1_confdiff_by_questcat %>%
+  group_by(comparison_pair_tag, block) %>%
+  summarise(n_nan = sum(is.nan(confdiff)), n_total = n(), .groups = "drop") %>%
+  mutate(pct_nan = n_nan / n_total)
+
 
 # ANALYSIS 8: check that graph config is not a confounding factor by re-running main analyses with it as variable
 
