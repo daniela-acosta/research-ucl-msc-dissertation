@@ -29,6 +29,11 @@ demographics <- read_csv(paste(data_dir, "demographics.csv", sep = ""))
 learning <- read_csv(paste(data_dir, "learning_trials.csv", sep = ""))
 testing <- read_csv(paste(data_dir, "test_trials.csv", sep = ""))
 
+demographics <- demographics %>%
+  mutate(
+    participant_id = factor(participant_id)
+  )
+
 learning <- learning %>%
   mutate(
     participant_id = factor(participant_id),
@@ -40,6 +45,10 @@ learning <- learning %>%
   )
 
 testing <- testing %>%
+  left_join(
+    demographics %>% select(participant_id, age, gender, handedness), 
+    by = "participant_id"
+    ) %>%
   mutate(
     participant_id = factor(participant_id),
     rt = as.numeric(rt),
@@ -65,7 +74,17 @@ testing <- testing %>%
                                             "(5) B1WNB__B2WB", "(6) B1WNB__B2XNB",
                                             "(7) B1XB__B2WB", "(8) B1XB__B2XNB",
                                             "(9) B1WNB__B1XB"
-                                            ))
+                                            )),
+    left_is_correct = case_when(
+      comparison_type == "T1" ~ (left_is_option_a & option_a_plausible) | (!left_is_option_a & !option_a_plausible),
+      TRUE ~ NA
+    ),
+    gender = factor(gender),
+    handedness = factor(handedness),
+    stimulus_config = factor(stimulus_config),
+    category = factor(category),
+    correct_dest_community = factor(correct_dest_community),
+    correct_dest_node_type = factor(correct_dest_node_type)
   )
 
 
@@ -406,7 +425,6 @@ t1_accuracy_by_cat <- t1_testing %>%
     .groups = "drop"
   )
 
-# for analysis 7
 all_confidence_by_questcat <- testing %>%
   group_by(participant_id, block, comparison_pair_tag) %>%
   summarise(
@@ -425,6 +443,55 @@ t1_confdiff_by_questcat <- t1_testing %>%
     mean_rt = mean(rt, na.rm = TRUE),
     .groups = "drop"
   )
+
+# for analysis 7
+
+dest_community_comparisons <- testing %>%
+  filter(is_dest_community_comparison == TRUE)
+
+dest_nodetype_comparisons <- testing %>%
+  filter(is_dest_node_type_comparison == TRUE)
+
+# section 2 logic
+# overallChoice ~ choiceNode_choiceNode
+# inCommon ~ inCommon_different
+
+q1_q2_comparison <- testing %>%
+  filter(category == 1 | category == 2) %>%
+  mutate(
+    within_option_node_type = case_when(
+      category == 1 ~ "B",
+      category == 2 ~ "NB",
+      TRUE ~ NA
+    )
+  )
+# sanity check -- some rows have chosen_community_is_X=NA, this is because of timeouts
+q1_q2_comparison %>% group_by(chosen_community_is_X) %>% summarise(n = n())
+q1_q2_comparison %>% filter(timed_out == TRUE) %>% group_by(chosen_community_is_X) %>% summarise(n = n())
+
+q3_comparison <- testing %>%
+  filter(category == 3)
+
+q5_q6_comparison <- testing %>%
+  filter(category == 5 | category == 6) %>%
+  mutate(
+    implausible_option_node_type = case_when(
+      category == 5 ~ "B",
+      category == 6 ~ "NB",
+      TRUE ~ NA
+    ),
+    implausible_option_community = case_when(
+      category == 5 ~ "W",
+      category == 6 ~ "X",
+      TRUE ~ NA
+    )
+  )
+
+q4_comparison <- testing %>%
+  filter(category == 4)
+
+q9_comparison <- testing %>%
+  filter(category == 9)
 
 
 # ANALYSIS 1: LMEM effect of block on accuracy and RT
@@ -825,6 +892,36 @@ t1_confdiff_by_questcat %>%
   summarise(n_nan = sum(is.nan(confdiff)), n_total = n(), .groups = "drop") %>%
   mutate(pct_nan = n_nan / n_total)
 
+
+# ANALYSIS 7: effects of structural characteristics on choice bias
+
+res_7a <- glmer(chosen_community_is_X ~ block * comparison_type + (1|participant_id), data = dest_community_comparisons, family = binomial)
+summary(res_7a)
+plogis(fixef(res_7a)["(Intercept)"]) # predicted rate at block 1
+
+res_7b <- glmer(chosen_nodetype_is_B ~ block * comparison_type + (1|participant_id), data = dest_nodetype_comparisons, family = binomial)
+summary(res_7b)
+plogis(fixef(res_7b)["(Intercept)"]) # predicted rate at block 1
+
+# investigating node type preference
+# comparing q1/q2
+res_7c <- glmer(chosen_community_is_X ~ block * within_option_node_type + (1|participant_id), data = q1_q2_comparison, family = binomial)
+summary(res_7c)
+
+#comparing q3/chance
+res_7d <- glmer(chosen_nodetype_is_B ~ block + (1|participant_id), data = q3_comparison, family = binomial)
+summary(res_7d)
+# no significant results, consistent with findings from analysis 3
+
+# investigating community preference
+# comparing q4/chance
+res_7e <- glmer(chosen_nodetype_is_B ~ block + (1|participant_id), data = q4_comparison, family = binomial)
+summary(res_7e)
+
+# comparing q9/chance
+res_7f <- glmer(chosen_nodetype_is_B ~ block + (1|participant_id), data = q9_comparison, family = binomial)
+summary(res_7f)
+#no significant results here either :'(
 
 # ANALYSIS 8: check that graph config is not a confounding factor by re-running main analyses with it as variable
 
