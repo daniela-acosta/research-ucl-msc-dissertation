@@ -9,12 +9,19 @@ Loads combined_raw.csv, cleans types, derives analysis variables, and outputs:
 Derived variables added to test_trials:
     correct                 1/0 for T1 trials (chose plausible option); 0 for T1 timeouts; NaN for T0/T2
     confidence_z            confidence_response z-scored within each participant
-    correct_dest_community       W or X — plausible option's community relation to base node; NaN for T0/T2
-    correct_dest_node_type       B or NB — plausible option's node type; NaN for T0/T2
-    is_dest_community_comparison True if the pair contrasts W vs X destination community
-    is_dest_node_type_comparison True if the pair contrasts B vs NB destination node type
-    chosen_community_is_X        1/0 — did participant choose X option; NaN if not a community comparison or timed out
-    chosen_nodetype_is_B         1/0 — did participant choose B destination; NaN if not a node-type comparison or timed out
+    correct_dest_community            W or X — plausible option's community relation to base; NaN for T0/T2
+    correct_dest_node_type            B or NB — plausible option's node type; NaN for T0/T2
+    is_dest_community_comparison      True if the pair contrasts W vs X destination community
+    is_dest_node_type_comparison      True if the pair contrasts B vs NB destination node type
+    chosen_community_is_X             1/0 — chose X option; NaN if not a community comparison or timed out
+    chosen_nodetype_is_B              1/0 — chose B destination; NaN if not a node-type comparison or timed out
+    options_adjacent                  True if option_left and option_right share a graph edge
+    cumulative_base_node_views        learning steps showing base_node through end of current block
+    cumulative_correct_transition_views  times base→correct_dest traversed through end of current block;
+                                      NaN for T0/T2; 0 for T1 where transition never appeared
+    correct_transition_last_view      steps since the most recent base→correct_dest traversal (source-node
+                                      indexed; 0 = source was final learning step); NaN if T0/T2 or never seen
+    session_duration                  max time_elapsed (ms) for the participant across all trial types
 
 Usage:
     python data_analysis/scripts/preprocess.py
@@ -41,6 +48,20 @@ LEARNING_OUT = RESULTS_DIR / "learning_trials.csv"
 # Cover task response keys — must match CONFIG.coverTask in config.js.
 COVER_KEY_SYMMETRIC     = "f"
 COVER_KEY_NOT_SYMMETRIC = "j"
+
+# Learning walk length per block — must match CONFIG.walkLength.
+WALK_LENGTH = 48
+
+# Graph edges as frozensets — matches the adjacency list in CLAUDE.md / config.js.
+GRAPH_EDGES: frozenset = frozenset({
+    frozenset({"A", "B"}), frozenset({"A", "C"}), frozenset({"A", "D"}),
+    frozenset({"B", "C"}), frozenset({"B", "E"}),
+    frozenset({"C", "D"}),
+    frozenset({"D", "G"}),
+    frozenset({"E", "F"}), frozenset({"E", "H"}),
+    frozenset({"F", "G"}), frozenset({"F", "H"}),
+    frozenset({"G", "H"}),
+})
 
 # ---------------------------------------------------------------------------
 # Column type definitions
@@ -96,6 +117,10 @@ TEST_COLS = [
     "correct_dest_community", "correct_dest_node_type",
     "is_dest_community_comparison", "is_dest_node_type_comparison",
     "chosen_community_is_X", "chosen_nodetype_is_B",
+    "options_adjacent",
+    "cumulative_base_node_views", "cumulative_correct_transition_views",
+    "correct_transition_last_view",
+    "session_duration",
 ]
 
 LEARNING_COLS = [
@@ -238,6 +263,110 @@ def add_choice_bias_variables(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_graph_variables(df: pd.DataFrame) -> pd.DataFrame:
+    """options_adjacent: True if option_left and option_right share a graph edge."""
+    df["options_adjacent"] = [
+        frozenset({l, r}) in GRAPH_EDGES
+        for l, r in zip(df["option_left"], df["option_right"])
+    ]
+    return df
+
+
+def add_learning_cross_vars(test: pd.DataFrame, learning: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cross-references test trials with the learning walk to add recency/exposure variables.
+
+    cumulative_base_node_views: count of learning steps showing base_node in blocks 1..current.
+    cumulative_correct_transition_views: count of base→correct_dest traversals in blocks 1..current.
+        NaN for T0/T2; 0 for T1 when transition was never seen.
+    correct_transition_last_view: steps elapsed since the source node of the most recent
+        base→correct_dest traversal (measured from that source step to the final learning step
+        of the current block; 0 means the source was the very last learning step).
+        NaN for T0/T2 or if the transition was never seen.
+
+    Assumes step is 0-indexed within each block (0..WALK_LENGTH-1).
+    """
+    lrn = learning.copy()
+    lrn["_gs"] = (lrn["block"].astype(int) - 1) * WALK_LENGTH + lrn["step"].astype(int)
+
+    # ── cumulative_base_node_views ─────────────────────────────────────────
+    base_counts = (
+        lrn.groupby(["participant_id", "block", "node"])
+        .size()
+        .reset_index(name="_n")
+    )
+    base_counts = base_counts.sort_values(["participant_id", "node", "block"])
+    base_counts["cumulative_base_node_views"] = (
+        base_counts.groupby(["participant_id", "node"])["_n"].cumsum()
+    )
+    test = test.merge(
+        base_counts[["participant_id", "block", "node", "cumulative_base_node_views"]].rename(
+            columns={"node": "base_node"}
+        ),
+        on=["participant_id", "block", "base_node"],
+        how="left",
+    )
+
+    # ── consecutive-pair transitions (within-block only) ───────────────────
+    lrn_s = lrn.sort_values(["participant_id", "block", "step"])
+    lrn_s = lrn_s.assign(_nxt=lrn_s.groupby(["participant_id", "block"])["node"].shift(-1))
+    trans = lrn_s.dropna(subset=["_nxt"]).copy()
+
+    # ── correct destination node for T1 test rows ─────────────────────────
+    is_a   = test["option_a_plausible"].fillna(False).astype(bool)
+    is_b   = test["option_b_plausible"].fillna(False).astype(bool)
+    is_t1  = is_a ^ is_b
+    l_is_a = test["left_is_option_a"].fillna(False).astype(bool)
+    opt_a  = np.where(l_is_a, test["option_left"],  test["option_right"])
+    opt_b  = np.where(l_is_a, test["option_right"], test["option_left"])
+    test["_cdest"] = pd.Series(
+        np.where(is_a, opt_a, np.where(is_b, opt_b, np.nan)), index=test.index
+    )
+
+    # ── aggregate transitions per (participant, block, source, dest) ───────
+    tagg = (
+        trans.groupby(["participant_id", "block", "node", "_nxt"])
+        .agg(_cnt=("_gs", "count"), _last=("_gs", "max"))
+        .reset_index()
+    )
+    tagg = tagg.sort_values(["participant_id", "node", "_nxt", "block"])
+    grp  = tagg.groupby(["participant_id", "node", "_nxt"])
+    tagg["cumulative_correct_transition_views"] = grp["_cnt"].cumsum()
+    tagg["_last_gs"] = grp["_last"].cummax()
+
+    test = test.merge(
+        tagg[["participant_id", "block", "node", "_nxt",
+              "cumulative_correct_transition_views", "_last_gs"]].rename(
+            columns={"node": "base_node", "_nxt": "_cdest"}
+        ),
+        on=["participant_id", "block", "base_node", "_cdest"],
+        how="left",
+    )
+
+    # T1 + never seen → count 0; non-T1 → NaN
+    test.loc[is_t1 & test["cumulative_correct_transition_views"].isna(),
+             "cumulative_correct_transition_views"] = 0.0
+    test.loc[~is_t1, "cumulative_correct_transition_views"] = np.nan
+
+    # steps_since: (last 0-indexed step of block B) − global_step_of_transition_source
+    end_step = test["block"].astype(int) * WALK_LENGTH - 1
+    test["correct_transition_last_view"] = end_step - test["_last_gs"]
+    test.loc[~is_t1, "correct_transition_last_view"] = np.nan
+
+    test.drop(columns=["_cdest", "_last_gs"], inplace=True)
+    return test
+
+
+def add_session_duration(test: pd.DataFrame, raw: pd.DataFrame) -> pd.DataFrame:
+    """session_duration: max time_elapsed (ms) per participant across all trial types."""
+    dur = (
+        raw.groupby("participant_id")["time_elapsed"]
+        .max()
+        .reset_index(name="session_duration")
+    )
+    return test.merge(dur, on="participant_id", how="left")
+
+
 def add_confidence_z(df: pd.DataFrame) -> pd.DataFrame:
     """
     confidence_z: confidence_response z-scored within each participant.
@@ -279,11 +408,19 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     raw = fix_types(raw)
 
-    # ── Test trials ─────────────────────────────────────────────────────────
+    # ── Learning trials (extracted first — needed for cross-reference variables) ──
+    learning_raw = raw[raw["trial_type_label"] == "learning"].copy()
+    learning_raw["responded"] = learning_raw["cover_response"].notna()
+    learning_raw = add_cover_correct(learning_raw)
+
+    # ── Test trials ──────────────────────────────────────────────────────────
     test = raw[raw["trial_type_label"] == "test"].copy()
     test = add_correct(test)
     test = add_correct_option_properties(test)
     test = add_choice_bias_variables(test)
+    test = add_graph_variables(test)
+    test = add_learning_cross_vars(test, learning_raw)
+    test = add_session_duration(test, raw)
     test = add_confidence_z(test)
     test = test[[c for c in TEST_COLS if c in test.columns]].copy()
     test.reset_index(drop=True, inplace=True)
@@ -292,11 +429,8 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     print(f"  correct defined (T1, responded): {test['correct'].notna().sum()} / {len(test)}")
     _summarise_test(test)
 
-    # ── Learning trials ──────────────────────────────────────────────────────
-    learning = raw[raw["trial_type_label"] == "learning"].copy()
-    learning["responded"] = learning["cover_response"].notna()
-    learning = add_cover_correct(learning)
-    learning = learning[[c for c in LEARNING_COLS if c in learning.columns]].copy()
+    # ── Learning trials (finalised) ───────────────────────────────────────────
+    learning = learning_raw[[c for c in LEARNING_COLS if c in learning_raw.columns]].copy()
     learning.reset_index(drop=True, inplace=True)
 
     print(f"\nLearning trials : {len(learning)} rows")
