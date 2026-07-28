@@ -1147,6 +1147,20 @@ summary(res_9h)
 
 
 # ANALYSIS 10: random walk descriptive analysis
-# random_walks <- learning %>%
-#   group_by(participant_id, )
+learning %>% count(participant_id, block, node) %>% filter(n < 3)
+# no node had less than 3 reps per block. some had 3. also see stats summary below
+
+node_visits <- learning %>%
+  count(participant_id, block, node) %>%
+  complete(participant_id, block, node, fill = list(n = 0)) %>%
+  group_by(block, node) %>%
+  summarise(mean_visits = mean(n), sd = sd(n), median = median(n), min = min(n), max = max(n), .groups = "drop")
+
+ggplot(node_visits, aes(x = node, y = mean_visits, fill = factor(block))) +
+  geom_col(position = "dodge") +
+  geom_errorbar(aes(ymin = mean_visits - sd, ymax = mean_visits + sd),
+                position = position_dodge(width = 0.9), width = 0.2) +
+  labs(x = "Node", y = "Mean visits per participant", fill = "Block") +
+  theme_minimal()
+
 
