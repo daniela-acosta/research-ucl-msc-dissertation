@@ -486,6 +486,24 @@ def save_csv(rows: list[dict], path: Path) -> None:
     print(f"Saved CSV  → {path}")
 
 
+def save_coding_csv(rows: list[dict], path: Path) -> None:
+    """Slim CSV for topic coding: participant_id + comment columns only, empty string for blanks."""
+    fields = [
+        "participant_id",
+        "pre_comments",
+        "study_purpose_guess",
+        "noticed_arrangement",
+        "arrangement_description",
+        "post_comments",
+    ]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({k: ("" if row.get(k) == "—" else row.get(k, "")) for k in fields})
+    print(f"Saved coding CSV → {path}")
+
+
 # ── entry point ───────────────────────────────────────────────────────────────
 
 def main():
@@ -508,7 +526,15 @@ def main():
         type=Path,
         default=None,
         metavar="PATH",
-        help="Also save a CSV at this path.",
+        help="Also save a full CSV at this path.",
+    )
+    parser.add_argument(
+        "--coding-csv",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Save a slim coding CSV (participant_id + comment columns only). "
+             "Default: <results-dir>/comments_coding.csv",
     )
     parser.add_argument(
         "--open",
@@ -525,6 +551,9 @@ def main():
 
     if args.csv:
         save_csv(rows, args.csv)
+
+    coding_path = args.coding_csv or (args.results_dir / "comments_coding.csv")
+    save_coding_csv(rows, coding_path)
 
     if args.open:
         webbrowser.open(html_path.resolve().as_uri())
