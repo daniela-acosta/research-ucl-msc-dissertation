@@ -28,8 +28,10 @@ data_dir <- "../../data/to_review/"
 demographics <- read_csv(paste(data_dir, "demographics.csv", sep = ""))
 learning <- read_csv(paste(data_dir, "learning_trials.csv", sep = ""))
 testing <- read_csv(paste(data_dir, "test_trials.csv", sep = ""))
+comments <- read_csv(paste(data_dir, "comments_coding_complete.csv", sep = ""))
 
 demographics <- demographics %>%
+  filter(handedness != "ambidextrous") %>%
   mutate(
     participant_id = factor(participant_id)
   )
@@ -49,6 +51,10 @@ testing <- testing %>%
     demographics %>% select(participant_id, age, gender, handedness), 
     by = "participant_id"
     ) %>%
+  left_join(
+    comments %>% select(participant_id, noticed_arrangement, theme_tags, theme_tags_broad, primary_tag, task_purpose_awareness), 
+    by = "participant_id"
+  ) %>%
   mutate(
     participant_id = factor(participant_id),
     rt = as.numeric(rt),
@@ -84,7 +90,11 @@ testing <- testing %>%
     stimulus_config = factor(stimulus_config),
     category = factor(category),
     correct_dest_community = factor(correct_dest_community),
-    correct_dest_node_type = factor(correct_dest_node_type)
+    correct_dest_node_type = factor(correct_dest_node_type),
+    theme_tags = factor(theme_tags),
+    theme_tags_broad = factor(theme_tags_broad),
+    primary_tag = factor(primary_tag),
+    noticed_arrangement = factor(noticed_arrangement)
   )
 
 
@@ -97,15 +107,15 @@ testing_trial_count <- blocks * questions_per_block
 t1_block_trial_count <- 24
 
 category_colors <- c(
-  "(1) NB1WB__NB2XB"   = "#1f77b4",  # category 1 (reference)
-  "(2) NB1WNB__NB2XB"  = "#ff7f0e",  # category 2
-  "(3) NB1WB__NB1WNB"  = "#c893b8",  # category 3 (T2)
-  "(4) B2WB__B2XNB"    = "#a6a65b",  # category 4 (T0)
-  "(5) B1WNB__B2WB"    = "#2ca02c",  # category 5
-  "(6) B1WNB__B2XNB"   = "#d62728",  # category 6
-  "(7) B1XB__B2WB"     = "#9467bd",  # category 7
-  "(8) B1XB__B2XNB"    = "#8c564b",  # category 8
-  "(9) B1WNB__B1XB"    = "#5daeb6"   # category 9 (T2)
+  "(1) NB1WB__NB2XB" = "#1f77b4", 
+  "(2) NB1WNB__NB2XB" = "#ff7f0e", 
+  "(3) NB1WB__NB1WNB" = "#c893b8", 
+  "(4) B2WB__B2XNB" = "#a6a65b", 
+  "(5) B1WNB__B2WB" = "#2ca02c", 
+  "(6) B1WNB__B2XNB" = "#d62728", 
+  "(7) B1XB__B2WB" = "#9467bd", 
+  "(8) B1XB__B2XNB" = "#8c564b", 
+  "(9) B1WNB__B1XB" = "#5daeb6"
 )
 
 #--for sanity checks--
@@ -492,6 +502,25 @@ q4_comparison <- testing %>%
 
 q9_comparison <- testing %>%
   filter(category == 9)
+
+# for analysis 8
+t1_testing_rescaled <- t1_testing %>%
+  mutate(
+    age_z = as.numeric(scale(age)),
+    session_duration_z = as.numeric(scale(session_duration)),
+    cumulative_correct_transition_views_z = as.numeric(scale(cumulative_correct_transition_views)),
+    cumulative_base_node_views_z = as.numeric(scale(cumulative_base_node_views)),
+    correct_transition_last_view_z = as.numeric(scale(correct_transition_last_view))
+  )
+
+testing_rescaled <- testing %>%
+  mutate(
+    age_z = as.numeric(scale(age)),
+    session_duration_z = as.numeric(scale(session_duration)),
+    cumulative_correct_transition_views_z = as.numeric(scale(cumulative_correct_transition_views)),
+    cumulative_base_node_views_z = as.numeric(scale(cumulative_base_node_views)),
+    correct_transition_last_view_z = as.numeric(scale(correct_transition_last_view))
+  )
 
 
 # ANALYSIS 1: LMEM effect of block on accuracy and RT
@@ -923,34 +952,201 @@ res_7f <- glmer(chosen_nodetype_is_B ~ block + (1|participant_id), data = q9_com
 summary(res_7f)
 #no significant results here either :'(
 
-# ANALYSIS 8: check that graph config is not a confounding factor by re-running main analyses with it as variable
+# ANALYSIS 8: omnibus test
 
-t1_confidence_config <- t1_testing %>%
-  group_by(participant_id, block, stimulus_config) %>%
+all_confidence_omnibus <- testing_rescaled %>%
+  group_by(participant_id, 
+           block, 
+           comparison_type, 
+           # category,
+           stimulus_config, 
+           options_adjacent, 
+           # cumulative_correct_transition_views_z,
+           cumulative_base_node_views_z,
+           # correct_transition_last_view_z,
+           # correct_dest_community,
+           # correct_dest_node_type,
+           # left_is_correct,
+           confidence_slider_start,
+           age_z,
+           gender,
+           handedness,
+           session_duration_z
+           ) %>%
   summarise(
-    block_accuracy_config = sum(correct == 1, na.rm = TRUE) / t1_block_trial_count,
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100
+  )
+
+all_confdiff_omnibus <- testing_rescaled %>%
+  filter(comparison_type == "T1") %>%
+  group_by(participant_id, 
+           block, 
+           # category,
+           stimulus_config, 
+           # options_adjacent, 
+           cumulative_correct_transition_views_z,
+           cumulative_base_node_views_z,
+           # correct_transition_last_view_z,
+           # correct_dest_community,
+           # correct_dest_node_type,
+           # left_is_correct,
+           confidence_slider_start,
+           # age_z,
+           # gender,
+           # handedness,
+           # session_duration_z
+  ) %>%
+  summarise(
     mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
     mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
     mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
     confdiff = mean_confidence_correct - mean_confidence_incorrect,
-  )
+  ) %>%
+  filter(!is.na(confdiff))
+# the length of non na in confdiff is so small that an omnibus test is not worth it i think
 
-t1_confdiff_config <- t1_confidence_config %>%
+all_confdiff_omnibus <- all_confidence_omnibus %>%
+  filter(comparison_type == "T1") %>%
   filter(!is.na(confdiff))
 
-res_8_a <- glmer(correct ~ block + stimulus_config + (1 |participant_id), data = t1_testing, family = binomial)
-summary(res_8_a)
+res_8a <- glmer(correct ~ 
+                  stimulus_config +
+                  block * category + 
+                  options_adjacent +
+                  cumulative_correct_transition_views_z +
+                  cumulative_base_node_views_z +
+                  correct_transition_last_view_z +
+                  correct_dest_community +
+                  correct_dest_node_type + 
+                  left_is_correct +
+                  # confidence_slider_start +
+                  age_z +
+                  gender +
+                  handedness +
+                  session_duration_z +
+                  (1|participant_id),
+                data = t1_testing_rescaled, family = binomial
+                  )
+summary(res_8a)
 
-emm <- emmeans(res_8_a, ~ stimulus_config, type = "response")
-emm
-pairs(emm)
+res_8b <- lmer(log(rt) ~ 
+                 stimulus_config +
+                 block * category +
+                 # block * comparison_type +
+                 options_adjacent +
+                 # cumulative_correct_transition_views_z +
+                 cumulative_base_node_views_z +
+                 # correct_transition_last_view_z +
+                 # correct_dest_community +
+                 # correct_dest_node_type + 
+                 # left_is_correct +
+                 age_z +
+                 gender +
+                 handedness +
+                 # session_duration_z +
+                 (1|participant_id),
+               data = testing_rescaled
+)
+summary(res_8b)
+# cant run this for category and comparison type at the same time, but different runs give different insights
 
-res_8_b <- lmer(log(rt) ~ block  + stimulus_config + (1 + block|participant_id), data = t1_testing)
-summary(res_8_b)
+res_8c <- lmer(mean_confidence ~
+                 stimulus_config +
+                 # block * category + 
+                 block * comparison_type +
+                 options_adjacent +
+                 # cumulative_correct_transition_views_z +
+                 cumulative_base_node_views_z +
+                 # correct_transition_last_view_z +
+                 # correct_dest_community +
+                 # correct_dest_node_type + 
+                 # left_is_correct +
+                 confidence_slider_start +
+                 age_z +
+                 gender +
+                 handedness +
+                 session_duration_z +
+                 (1|participant_id),
+               data = all_confidence_omnibus
+                 )
+summary(res_8c)
 
-res_8_c <- lmer(mean_confidence ~ block + stimulus_config + (1|participant_id), data = t1_confidence_config)
-summary(res_2_a)
+res_8d <- lmer(confdiff ~ 
+                 stimulus_config +
+                 # block * category +
+                 # options_adjacent +
+                 cumulative_correct_transition_views_z +
+                 cumulative_base_node_views_z +
+                 # correct_transition_last_view_z +
+                 # correct_dest_community +
+                 # correct_dest_node_type +
+                 # left_is_correct +
+                 confidence_slider_start +
+                 # age_z +
+                 # gender +
+                 # handedness +
+                 # session_duration_z +
+                 (1|participant_id),
+               data = all_confdiff_omnibus
+)
+# this doesn't make sense, too granular and too many na's. let's leave it at confidence for now
 
-res_8_d <- lmer(confdiff ~ block + stimulus_config + (1|participant_id), data = t1_confdiff_config)
-summary(res_2_b)
+
+# ANALYSIS 9: 
+comments_confidence_awareness <- testing %>%
+  group_by(participant_id, block, noticed_arrangement) %>%
+  mutate(
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
+    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
+    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
+    confdiff = mean_confidence_correct - mean_confidence_incorrect,
+    block_avg_rt = mean(rt, na.rm = TRUE),
+  )
+
+comments_confdiff_awareness <- comments_confidence_awareness %>%
+  filter(!is.na(confdiff))
+
+comments_confidence_tags <- testing %>%
+  group_by(participant_id, block, primary_tag) %>%
+  mutate(
+    mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
+    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
+    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
+    confdiff = mean_confidence_correct - mean_confidence_incorrect,
+    block_avg_rt = mean(rt, na.rm = TRUE),
+  )
+
+comments_confdiff_tags <- comments_confidence_tags %>%
+  filter(!is.na(confdiff))
+
+# first with explicit awareness claim
+res_9a <- glmer(correct ~ block * noticed_arrangement + (1|participant_id), data = t1_testing, family = binomial)
+summary(res_9a)
+
+res_9b <- lmer(log(rt) ~ block * noticed_arrangement + (1|participant_id), data = testing)
+summary(res_9b)
+
+res_9c <- lmer(mean_confidence ~ block * noticed_arrangement + (1|participant_id), data = comments_confidence_awareness)
+summary(res_9c)
+
+res_9d <- lmer(confdiff ~ block * noticed_arrangement + (1|participant_id), data = comments_confidence_awareness)
+summary(res_9d)
+
+# now with tags
+res_9e <- glmer(correct ~ block * primary_tag + (1|participant_id), data = testing, family = binomial)
+summary(res_9e)
+
+res_9f <- lmer(log(rt) ~ block * primary_tag + (1|participant_id), data = testing)
+summary(res_9f)
+
+res_9g <- lmer(mean_confidence ~ block * primary_tag + (1|participant_id), data = comments_confidence_tags)
+summary(res_9g)
+
+res_9h <- lmer(confdiff ~ block * primary_tag + (1|participant_id), data = comments_confidence_tags)
+summary(res_9h)
+
+
+# ANALYSIS 10: random walk descriptive analysis
+# random_walks <- learning %>%
+#   group_by(participant_id, )
 
