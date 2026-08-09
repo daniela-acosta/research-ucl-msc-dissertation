@@ -16,6 +16,8 @@ Derived variables added to test_trials:
     chosen_community_is_X             1/0 — chose X option; NaN if not a community comparison or timed out
     chosen_nodetype_is_B              1/0 — chose B destination; NaN if not a node-type comparison or timed out
     options_adjacent                  True if option_left and option_right share a graph edge
+    cumulative_question_views         how many times this participant has seen this question_code
+                                      up to and including the current block (1 = first exposure)
     cumulative_base_node_views        learning steps showing base_node through end of current block
     cumulative_correct_transition_views  times base→correct_dest traversed through end of current block;
                                       NaN for T0/T2; 0 for T1 where transition never appeared
@@ -118,6 +120,7 @@ TEST_COLS = [
     "is_dest_community_comparison", "is_dest_node_type_comparison",
     "chosen_community_is_X", "chosen_nodetype_is_B",
     "options_adjacent",
+    "cumulative_question_views",
     "cumulative_base_node_views", "cumulative_correct_transition_views",
     "correct_transition_last_view",
     "session_duration",
@@ -260,6 +263,16 @@ def add_choice_bias_variables(df: pd.DataFrame) -> pd.DataFrame:
     df["chosen_community_is_X"] = np.where(is_comm, (chosen_wc == "X").astype(float), np.nan)
     df["chosen_nodetype_is_B"]  = np.where(is_nt,   (chosen_dt == "B").astype(float), np.nan)
 
+    return df
+
+
+def add_question_views(df: pd.DataFrame) -> pd.DataFrame:
+    """cumulative_question_views: how many times this participant has seen this question_code
+    up to and including the current block (1 = first exposure, 2 = second, etc.)."""
+    df = df.sort_values(["participant_id", "question_code", "block"])
+    df["cumulative_question_views"] = (
+        df.groupby(["participant_id", "question_code"]).cumcount() + 1
+    )
     return df
 
 
@@ -418,6 +431,7 @@ def preprocess(input_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     test = add_correct(test)
     test = add_correct_option_properties(test)
     test = add_choice_bias_variables(test)
+    test = add_question_views(test)
     test = add_graph_variables(test)
     test = add_learning_cross_vars(test, learning_raw)
     test = add_session_duration(test, raw)
