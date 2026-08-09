@@ -11,15 +11,15 @@ theme_set(
 )
 
 # CHECK PACKAGE VERSIONS
-R.version.string
-RStudio.Version()$version
-packageVersion("emmeans")
-packageVersion("lme4")
-packageVersion("lmerTest")
-packageVersion("tidyverse")
-packageVersion("ggplot2")
-# or
-sessionInfo()
+# R.version.string
+# RStudio.Version()$version
+# packageVersion("emmeans")
+# packageVersion("lme4")
+# packageVersion("lmerTest")
+# packageVersion("tidyverse")
+# packageVersion("ggplot2")
+# # or
+# sessionInfo()
 
 # LOAD DATA
 # data_dir <- "../../data/results/"
@@ -29,12 +29,6 @@ demographics <- read_csv(paste(data_dir, "demographics.csv", sep = ""))
 learning <- read_csv(paste(data_dir, "learning_trials.csv", sep = ""))
 testing <- read_csv(paste(data_dir, "test_trials.csv", sep = ""))
 comments <- read_csv(paste(data_dir, "comments_coding_complete.csv", sep = ""))
-
-demographics <- demographics %>%
-  filter(handedness != "ambidextrous") %>%
-  mutate(
-    participant_id = factor(participant_id)
-  )
 
 learning <- learning %>%
   mutate(
@@ -93,8 +87,11 @@ testing <- testing %>%
     correct_dest_node_type = factor(correct_dest_node_type),
     theme_tags = factor(theme_tags),
     theme_tags_broad = factor(theme_tags_broad),
-    primary_tag = factor(primary_tag),
-    noticed_arrangement = factor(noticed_arrangement)
+    primary_tag = factor(primary_tag, 
+                         levels = c("no_guess", "generic_pattern", "relational_transition",
+                                    "symmetry_perception", "memory", "reaction_time", "other")),
+    noticed_arrangement = factor(noticed_arrangement),
+    cumulative_question_views = as.numeric(cumulative_question_views)
   )
 
 
@@ -122,6 +119,7 @@ category_colors <- c(
 og_learning_count <- count(learning) %>% pull(n)
 og_testing_count <- count(testing) %>% pull(n)
 og_demographics_count <- count(demographics) %>% pull(n)
+og_comments_count <- count(comments) %>% pull(n)
 
 learning_timeouts <- learning %>%
   group_by(participant_id) %>%
@@ -261,10 +259,13 @@ testing <- testing %>%
   filter(!participant_id %in% excluded_participants)
 demographics <- demographics %>%
   filter(!participant_id %in% excluded_participants)
+comments <- comments %>%
+  filter(!participant_id %in% excluded_participants)
 
 learning_count <- count(learning) %>% pull(n)
 testing_count <- count(testing) %>% pull(n)
 demographics_count <- count(demographics) %>% pull(n)
+comments_count <- count(comments) %>% pull(n)
 
 #--sanity check--
 # results should be integers, not decimal numbers
@@ -412,12 +413,14 @@ all_accuracy_by_cat <- testing %>%
   summarise(
     participant_accuracy = mean(correct, na.rm = TRUE),
     participant_rt = mean(rt, na.rm = TRUE),
+    participant_confidence = mean(confidence, na.rm = TRUE),
     .groups = "drop") %>%
   group_by(comparison_pair_tag, block) %>%
   summarise(
     mean_accuracy = mean(participant_accuracy),
     se_acc = sd(participant_accuracy) / sqrt(n()),
     mean_rt = mean(participant_rt),
+    mean_confidence = mean(participant_confidence),
     .groups = "drop"
   )
 
@@ -510,7 +513,8 @@ t1_testing_rescaled <- t1_testing %>%
     session_duration_z = as.numeric(scale(session_duration)),
     cumulative_correct_transition_views_z = as.numeric(scale(cumulative_correct_transition_views)),
     cumulative_base_node_views_z = as.numeric(scale(cumulative_base_node_views)),
-    correct_transition_last_view_z = as.numeric(scale(correct_transition_last_view))
+    correct_transition_last_view_z = as.numeric(scale(correct_transition_last_view)),
+    cumulative_question_views_z = as.numeric(scale(cumulative_question_views))
   )
 
 testing_rescaled <- testing %>%
@@ -519,7 +523,8 @@ testing_rescaled <- testing %>%
     session_duration_z = as.numeric(scale(session_duration)),
     cumulative_correct_transition_views_z = as.numeric(scale(cumulative_correct_transition_views)),
     cumulative_base_node_views_z = as.numeric(scale(cumulative_base_node_views)),
-    correct_transition_last_view_z = as.numeric(scale(correct_transition_last_view))
+    correct_transition_last_view_z = as.numeric(scale(correct_transition_last_view)),
+    cumulative_question_views_z = as.numeric(scale(cumulative_question_views))
   )
 
 
@@ -546,10 +551,10 @@ testing_rescaled <- testing %>%
 
 # adjust model (1 is preferred, 2 is fallback)
 # res_1_a1 <- glmer(correct ~ block + (1 + block|participant_id), data = t1_testing, family = binomial) -- didn't converge
-res_1_a <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
-summary(res_1_a)
-plogis(fixef(res_1_a)["(Intercept)"]) # block 0
-plogis(fixef(res_1_a)["(Intercept)"] + fixef(res_1_a)["block"] * 3)  # block 3
+res_1a <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
+summary(res_1a)
+plogis(fixef(res_1a)["(Intercept)"]) # block 0
+plogis(fixef(res_1a)["(Intercept)"] + fixef(res_1_a)["block"] * 3)  # block 3
 
 # plot
 emm_1_a <- emmeans(res_1_a, ~ block, at = list(block = 0:3), type = "response")
@@ -611,7 +616,6 @@ plot1b <- ggplot() +
   labs(y = "Reaction Time (ms)", x = "Block") +
   theme_minimal() +
   theme(legend.position = "bottom")
-
 
 # this is for graphs if we only want all T0/T1/T2 together
 # res_1_b2 <- lmer(log(rt) ~ block + (1|participant_id), data = testing)
@@ -745,13 +749,27 @@ summary(res_2_b)
 
 # ANALYSIS 3: LMEM effect of block and destination community on accuracy and RT
 
-res_3_a <- glmer(correct ~ block * correct_dest_community + (1|participant_id), data = t1_testing, family = binomial)
-summary(res_3_a)
+res_3a <- glmer(correct ~ block * correct_dest_community + (1|participant_id), data = t1_testing, family = binomial)
+summary(res_3a)
 
-res_3_b <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id), data = t1_testing)
-summary(res_3_b)
+res_3b <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id), data = t1_testing)
+summary(res_3b)
 # looks like W does have a significant change each block for RT. and X's change is different from it (interaction is significant)
 # using emtrends now to see difference bwtween slopes
+
+# pool 8 -> 8 instances per question. categories 2,5,8.
+# this is to check whether the finding that participants respond to X transition questions 
+# faster still stands. this is to account for the recency (priming) effect
+t1_pool8 <- subset(t1_testing, category %in% c(2, 5, 8))
+res_pool8 <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id) + (1|question_code), data = t1_pool8)
+summary(res_pool8)
+
+res_cat7 <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id) + (1|question_code),
+                 data = subset(t1_testing, category == 7))
+summary(res_cat7)
+
+res_cats16 <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id) + (1|question_code), data = subset(t1_testing, category %in% c(1, 6)))
+summary(res_cats16)
 
 emtrends(res_3_b, ~ correct_dest_community, var = "block")
 # looks like X is faster even than W. all results on the log scale! so need to convert before interpreting
@@ -797,8 +815,8 @@ summary(res_3_d)
 
 # ANALYSIS 4: LMEM effect of block and destination node type on accuracy and RT
 
-res_4_a <- glmer(correct ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing, family = binomial)
-summary(res_4_a)
+res_4a <- glmer(correct ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing, family = binomial)
+summary(res_4a)
 
 res_4_b <- lmer(log(rt) ~ block * correct_dest_node_type + (1|participant_id), data = t1_testing)
 summary(res_4_b)
@@ -862,10 +880,10 @@ cowplot::plot_grid(plot5a, plot5b, labels = c("A", "B"))
 # ANALYSIS 6: LMEM effect of block and question category on accuracy and RT
 # this was proposed as exploratory, and not with LMEM, only graphs
 # need to add levels to comparison pair tag and decide whether using category is better
-res_6_a <- glmer(correct ~ block * comparison_pair_tag + (1 |participant_id), data = t1_testing, family = binomial)
-summary(res_6_a)
+res_6a <- glmer(correct ~ block * comparison_pair_tag + (1 |participant_id), data = t1_testing, family = binomial)
+summary(res_6a)
 
-res_6a_coefs <- as.data.frame(summary(res_6_a)$coefficients)
+res_6a_coefs <- as.data.frame(summary(res_6a)$coefficients)
 res_6a_cat_rows <- res_6a_coefs[grepl("comparison_pair_tag", rownames(res_6a_coefs)), ]
 res_6a_cat_rows$p_adj_holm <- p.adjust(res_6a_cat_rows$`Pr(>|z|)`, method = "holm")
 
@@ -906,6 +924,17 @@ plot6b <- ggplot(all_accuracy_by_cat, aes(x = block, y = mean_rt,
 res_6c <- lmer(mean_confidence ~ block * comparison_pair_tag + (1|participant_id), data = all_confidence_by_questcat)
 summary(res_6c)
 
+plot6c <- ggplot(all_accuracy_by_cat, aes(x = block, y = mean_confidence, 
+                                          color = comparison_pair_tag, group = comparison_pair_tag)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  scale_color_manual(values = category_colors, name = "Question category") +
+  scale_x_continuous(breaks = 0:3, labels = 1:4) +
+  labs(y = "Mean Reactoin Time (ms)", x = "Block") +
+  theme_minimal() +
+  theme(legend.position = "bottom") + 
+  guides(color = guide_legend(nrow = 2))
+
 res_6d <- lmer(confdiff ~ block * comparison_pair_tag + (1|participant_id), data = t1_confdiff_by_questcat)
 summary(res_6d)
 
@@ -927,29 +956,39 @@ t1_confdiff_by_questcat %>%
 res_7a <- glmer(chosen_community_is_X ~ block * comparison_type + (1|participant_id), data = dest_community_comparisons, family = binomial)
 summary(res_7a)
 plogis(fixef(res_7a)["(Intercept)"]) # predicted rate at block 1
+plogis(fixef(res_7a)["(Intercept)"] + fixef(res_7a)["block"] * 3)
 
 res_7b <- glmer(chosen_nodetype_is_B ~ block * comparison_type + (1|participant_id), data = dest_nodetype_comparisons, family = binomial)
 summary(res_7b)
 plogis(fixef(res_7b)["(Intercept)"]) # predicted rate at block 1
+plogis(fixef(res_7b)["(Intercept)"] + fixef(res_7b)["block"] * 3)
 
 # investigating node type preference
 # comparing q1/q2
 res_7c <- glmer(chosen_community_is_X ~ block * within_option_node_type + (1|participant_id), data = q1_q2_comparison, family = binomial)
 summary(res_7c)
+plogis(fixef(res_7c)["(Intercept)"]) 
+plogis(fixef(res_7c)["(Intercept)"] + fixef(res_7c)["block"] * 3) 
 
 #comparing q3/chance
 res_7d <- glmer(chosen_nodetype_is_B ~ block + (1|participant_id), data = q3_comparison, family = binomial)
 summary(res_7d)
+plogis(fixef(res_7d)["(Intercept)"]) 
+plogis(fixef(res_7d)["(Intercept)"] + fixef(res_7d)["block"] * 3) 
 # no significant results, consistent with findings from analysis 3
 
 # investigating community preference
 # comparing q4/chance
 res_7e <- glmer(chosen_nodetype_is_B ~ block + (1|participant_id), data = q4_comparison, family = binomial)
 summary(res_7e)
+plogis(fixef(res_7e)["(Intercept)"]) 
+plogis(fixef(res_7e)["(Intercept)"] + fixef(res_7e)["block"] * 3) 
 
 # comparing q9/chance
 res_7f <- glmer(chosen_nodetype_is_B ~ block + (1|participant_id), data = q9_comparison, family = binomial)
 summary(res_7f)
+plogis(fixef(res_7f)["(Intercept)"]) 
+plogis(fixef(res_7f)["(Intercept)"] + fixef(res_7f)["block"] * 3) 
 #no significant results here either :'(
 
 # ANALYSIS 8: omnibus test
@@ -1019,36 +1058,113 @@ res_8a <- glmer(correct ~
                   correct_dest_community +
                   correct_dest_node_type + 
                   left_is_correct +
-                  # confidence_slider_start +
-                  age_z +
-                  gender +
-                  handedness +
                   session_duration_z +
                   (1|participant_id),
                 data = t1_testing_rescaled, family = binomial
                   )
 summary(res_8a)
+1-exp(fixef(res_8a)["correct_transition_last_view_z"]) # using exp here because it's a continuous predictor
+# 4.9% decrease in odds of accurate answer for every 1 SD increase in recency gap
+
+res_8a2 <- glmer(correct ~ block + cumulative_correct_transition_views_z + cumulative_question_views_z + (1|participant_id), data = t1_testing_rescaled, family = binomial)
+summary(res_8a2)
+
+# translate sd into something meaningful
+testing_rescaled %>% 
+  summarise(
+    mean = mean(correct_transition_last_view, na.rm = TRUE),
+    sd = sd(correct_transition_last_view, na.rm = TRUE),
+    min = min(correct_transition_last_view, na.rm = TRUE),
+    q25 = quantile(correct_transition_last_view, 0.25, na.rm = TRUE),
+    q75 = quantile(correct_transition_last_view, 0.75, na.rm = TRUE),
+    max = max(correct_transition_last_view, na.rm = TRUE)
+  )
+
+exp(fixef(res_8a)["cumulative_correct_transition_views_z"])
+# 14.7% increase in odds of accuracy for every 1 SD change in amount of views
+
+# translate sd into something meaningful
+testing_rescaled %>% 
+  summarise(
+    mean = mean(cumulative_correct_transition_views, na.rm = TRUE),
+    sd = sd(cumulative_correct_transition_views, na.rm = TRUE),
+    min = min(cumulative_correct_transition_views, na.rm = TRUE),
+    q25 = quantile(cumulative_correct_transition_views, 0.25, na.rm = TRUE),
+    q75 = quantile(cumulative_correct_transition_views, 0.75, na.rm = TRUE),
+    max = max(cumulative_correct_transition_views, na.rm = TRUE)
+  )
+
+exp(fixef(res_8a)["cumulative_base_node_views_z"])
+# 22.2% increase in odds of accuracy for every 1 SD change in node views
+
+# odds = probability / (1 - probability)
+
+# odds_ratio_to_prob <- function(p0, OR) {
+#   odds0 <- p0 / (1 - p0)
+#   odds1 <- odds0 * OR
+#   p1 <- odds1 / (1 + odds1)
+#   return(p1)
+# }
+# 
+# # example: your cumulative_correct_transition_views_z finding, starting from 52.1%
+# odds_ratio_to_prob(0.521, exp(0.137386))
+
+testing_rescaled %>% 
+  summarise(
+    mean = mean(cumulative_base_node_views, na.rm = TRUE),
+    sd = sd(cumulative_base_node_views, na.rm = TRUE),
+    min = min(cumulative_base_node_views, na.rm = TRUE),
+    q25 = quantile(cumulative_base_node_views, 0.25, na.rm = TRUE),
+    q75 = quantile(cumulative_base_node_views, 0.75, na.rm = TRUE),
+    max = max(cumulative_base_node_views, na.rm = TRUE)
+  )
+
+
+res_8a_coefs <- as.data.frame(summary(res_8a)$coefficients)
+res_8a_cat_rows <- res_8a_coefs
+res_8a_cat_rows$p_adj_holm <- p.adjust(res_8a_cat_rows$`Pr(>|z|)`, method = "holm")
 
 res_8b <- lmer(log(rt) ~ 
                  stimulus_config +
                  block * category +
                  # block * comparison_type +
                  options_adjacent +
-                 # cumulative_correct_transition_views_z +
+                 cumulative_correct_transition_views_z +
                  cumulative_base_node_views_z +
-                 # correct_transition_last_view_z +
-                 # correct_dest_community +
-                 # correct_dest_node_type + 
-                 # left_is_correct +
-                 age_z +
-                 gender +
-                 handedness +
+                 correct_transition_last_view_z +
+                 correct_dest_community +
+                 correct_dest_node_type +
+                 left_is_correct +
+                 # age_z +
+                 # gender +
+                 # handedness +
                  # session_duration_z +
                  (1|participant_id),
                data = testing_rescaled
 )
 summary(res_8b)
+
+res_8b2 <- lmer(log(rt) ~ block + cumulative_correct_transition_views_z +
+                  cumulative_question_views_z +
+                  (1|participant_id),
+                data = testing_rescaled)
+summary(res_8b2)
+car::vif(res_8b2) # colinearity is not an issue
+
+# MODEL RECONCILING ALL RT FINDINGS
+res_8b3 <- lmer(log(rt) ~ block + cumulative_correct_transition_views_z * primary_tag +
+       cumulative_question_views_z + (1|participant_id), data = testing_rescaled)
+summary(res_8b3)
+# this looks like evidence for task familiarity: if the decline reflected structure learning, 
+# exposure to a specific transition should matter, but itt doesnt. if it reflected item specific priming, 
+# question repetition should matter, but it doesnt either. 
+# what's left is generic practice (faster at reading the display, locating options, clicking) 
+
 # cant run this for category and comparison type at the same time, but different runs give different insights
+
+res_8b_coefs <- as.data.frame(summary(res_8b)$coefficients)
+res_8b_cat_rows <- res_8b_coefs
+res_8b_cat_rows$p_adj_holm <- p.adjust(res_8b_cat_rows$`Pr(>|t|)`, method = "holm")
 
 res_8c <- lmer(mean_confidence ~
                  stimulus_config +
@@ -1062,14 +1178,18 @@ res_8c <- lmer(mean_confidence ~
                  # correct_dest_node_type + 
                  # left_is_correct +
                  confidence_slider_start +
-                 age_z +
-                 gender +
-                 handedness +
+                 # age_z +
+                 # gender +
+                 # handedness +
                  session_duration_z +
                  (1|participant_id),
                data = all_confidence_omnibus
                  )
 summary(res_8c)
+
+res_8c_coefs <- as.data.frame(summary(res_8c)$coefficients)
+res_8c_cat_rows <- res_8c_coefs
+res_8c_cat_rows$p_adj_holm <- p.adjust(res_8c_cat_rows$`Pr(>|t|)`, method = "holm")
 
 res_8d <- lmer(confdiff ~ 
                  stimulus_config +
@@ -1093,27 +1213,42 @@ res_8d <- lmer(confdiff ~
 
 
 # ANALYSIS 9: 
-comments_confidence_awareness <- testing %>%
-  group_by(participant_id, block, noticed_arrangement) %>%
+testing_tags_regrouped <- testing %>%
   mutate(
+    primary_tag = case_when(
+      primary_tag == "symmetry_perception" ~ "other",
+      primary_tag == "reaction_time" ~ "other",
+      TRUE ~ primary_tag
+    )
+  ) %>%
+  mutate(
+    primary_tag = factor(primary_tag, levels = c("no_guess", "generic_pattern", "relational_transition", "memory", "other"))
+  )
+# regrouped because N was too small for some tags (criterion was, if N<5, add to "other")
+
+comments_confidence_awareness <- testing_tags_regrouped %>%
+  group_by(participant_id, block, noticed_arrangement) %>%
+  summarise(
     mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
     mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
     mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
     confdiff = mean_confidence_correct - mean_confidence_incorrect,
     block_avg_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop"
   )
 
 comments_confdiff_awareness <- comments_confidence_awareness %>%
   filter(!is.na(confdiff))
 
-comments_confidence_tags <- testing %>%
+comments_confidence_tags <- testing_tags_regrouped %>%
   group_by(participant_id, block, primary_tag) %>%
-  mutate(
+  summarise(
     mean_confidence = mean(confidence_response, na.rm = TRUE) / 100,
-    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE) / 100,
-    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE) / 100,
-    confdiff = mean_confidence_correct - mean_confidence_incorrect,
+    mean_confidence_correct = mean(confidence_response[correct == 1], na.rm = TRUE),
+    mean_confidence_incorrect = mean(confidence_response[correct == 0], na.rm = TRUE),
+    confdiff = (mean_confidence_correct - mean_confidence_incorrect) / 100,
     block_avg_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop"
   )
 
 comments_confdiff_tags <- comments_confidence_tags %>%
@@ -1129,22 +1264,79 @@ summary(res_9b)
 res_9c <- lmer(mean_confidence ~ block * noticed_arrangement + (1|participant_id), data = comments_confidence_awareness)
 summary(res_9c)
 
-res_9d <- lmer(confdiff ~ block * noticed_arrangement + (1|participant_id), data = comments_confidence_awareness)
+res_9d <- lmer(confdiff ~ block * noticed_arrangement + (1|participant_id), data = comments_confdiff_awareness)
 summary(res_9d)
 
 # now with tags
-res_9e <- glmer(correct ~ block * primary_tag + (1|participant_id), data = testing, family = binomial)
+res_9e <- glmer(correct ~ block * primary_tag + (1|participant_id), data = testing_tags_regrouped, family = binomial)
 summary(res_9e)
 
-res_9f <- lmer(log(rt) ~ block * primary_tag + (1|participant_id), data = testing)
+res_9f <- lmer(log(rt) ~ block * primary_tag + (1|participant_id), data = testing_tags_regrouped)
 summary(res_9f)
 
 res_9g <- lmer(mean_confidence ~ block * primary_tag + (1|participant_id), data = comments_confidence_tags)
 summary(res_9g)
 
-res_9h <- lmer(confdiff ~ block * primary_tag + (1|participant_id), data = comments_confidence_tags)
+res_9h <- lmer(confdiff ~ block * primary_tag + (1|participant_id), data = comments_confdiff_tags)
 summary(res_9h)
 
+# quick check for tags vs no tags
+testing_tags_regrouped2 <- testing_tags_regrouped %>%
+  mutate(
+    has_tags = case_when(
+      primary_tag %in% c("generic_pattern", "relational_transition", "memory", "other") ~ TRUE,
+      TRUE ~ FALSE
+    )
+  )
+
+# thsi is the global model grouping all tags, for the claim that commenters were faster
+res_9i <- lmer(log(rt) ~ block * has_tags + (1|participant_id), data = testing_tags_regrouped2)
+summary(res_9i)
+
+# getting values of models for summary table in writeup
+exp(fixef(res_9f)["(Intercept)"])
+exp(fixef(res_9f)["block:primary_taggeneric_pattern"])
+
+et <- emtrends(res_9f, ~ primary_tag, var = "block")
+s  <- summary(et, infer = TRUE) # to get CIs
+data.frame(
+  tag = s$primary_tag,
+  pct = (exp(s$block.trend) - 1) * 100,
+  lower = (exp(s$asymp.LCL %||% s$lower.CL) - 1) * 100,
+  upper = (exp(s$asymp.UCL %||% s$upper.CL) - 1) * 100
+)
+emtrends(res_9g, ~ primary_tag, var = "block", infer = TRUE)
+emtrends(res_9h, ~ primary_tag, var = "block", infer = TRUE)
+
+# counting how many participants reported knowledge
+testing %>% 
+  group_by(participant_id) %>% 
+  summarise(
+    noticed_arrangement = unique(noticed_arrangement), 
+    task_purpose_awareness = unique(task_purpose_awareness)
+    ) %>% count(noticed_arrangement)
+
+testing %>% 
+  group_by(participant_id) %>% 
+  summarise(
+    noticed_arrangement = unique(noticed_arrangement), 
+    task_purpose_awareness = unique(task_purpose_awareness)
+  ) %>% count(task_purpose_awareness)
+
+comments %>%
+  count(primary_tag)
+
+# seeing if noticed_arragement = yes had better accuracy, given they had an interaction with confdiff
+testing %>% group_by(participant_id, block, noticed_arrangement) %>% 
+  summarise(mean_accuracy = sum(correct == 1, na.rm = TRUE) / n()) %>%
+  group_by(noticed_arrangement, block) %>%
+  summarise(mean_accuracy = mean(mean_accuracy, na.rm = TRUE))
+
+# does the "aware gro"noticed_arragnement=yes" group differ from chance at the beginning?
+m_aware <- glmer(correct ~ block + (1|participant_id),
+                 data = filter(t1_testing, noticed_arrangement == "yes"),
+                 family = binomial)
+summary(m_aware)
 
 # ANALYSIS 10: random walk descriptive analysis
 learning %>% count(participant_id, block, node) %>% filter(n < 3)
@@ -1162,5 +1354,84 @@ ggplot(node_visits, aes(x = node, y = mean_visits, fill = factor(block))) +
                 position = position_dodge(width = 0.9), width = 0.2) +
   labs(x = "Node", y = "Mean visits per participant", fill = "Block") +
   theme_minimal()
+
+# check that no walk was the same
+learning %>% 
+  arrange(participant_id, block, step) %>%
+  group_by(participant_id) %>%
+  summarise(
+    walk = paste(node, collapse = ','), 
+    ) %>%
+  summarise(n_walks = n_distinct(walk))
+
+
+# ANALISYS 11: RT by transition type on learning phase
+
+learning_2 <- learning %>%
+  arrange(participant_id, block, step) %>%
+  group_by(participant_id, block) %>%
+  mutate(
+    community= if_else(node %in% c("A","B","C","D"), 1L, 2L),
+    prev_community = lag(community),
+    is_cross_transition = community != prev_community,
+    block
+  ) %>%
+  ungroup()
+
+res_11a <- lmer(log(cover_rt) ~ block * is_cross_transition + (1|participant_id), data = learning_2)
+summary(res_11a)
+
+
+### RANDOM GRAPHS
+r1_testing <- t1_testing %>% 
+  filter(category == 8) %>% 
+  group_by(participant_id, block) %>%
+  summarise(
+    participant_accuracy = mean(correct, na.rm = TRUE),
+    participant_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop") 
+r1_testing_block <- t1_testing %>% 
+  filter(category == 8) %>%
+  group_by(participant_id, block) %>%
+  summarise(
+    participant_accuracy = mean(correct, na.rm = TRUE),
+    participant_rt = mean(rt, na.rm = TRUE),
+    .groups = "drop") %>%
+  group_by(block) %>%
+  summarise(
+    mean_accuracy = mean(participant_accuracy),
+    se_acc = sd(participant_accuracy) / sqrt(n()),
+    mean_rt = mean(participant_rt),
+    .groups = "drop"
+  )
+
+
+plot_r1 <- ggplot() +
+  geom_boxplot(
+    data = r1_testing,
+    aes(x = factor(block), y = participant_accuracy),
+    fill = "gray85",
+    color = "gray50",
+    width = 0.5,
+    outlier.shape = NA
+  ) +
+  geom_line(
+    data = r1_testing_block,
+    aes(x = factor(block), y = mean_accuracy, group = 1),
+    color = "black",
+    linewidth = 1.2
+  ) +
+  geom_point(
+    data = r1_testing_block,
+    aes(x = factor(block), y = mean_accuracy),
+    color = "black",
+    size = 2.5
+  ) +
+  scale_x_discrete(labels = 1:4) +
+  labs(y = "Accuracy", x = "Block") +
+  theme_minimal()
+
+
+
 
 
