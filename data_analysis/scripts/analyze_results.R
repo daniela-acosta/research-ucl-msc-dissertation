@@ -554,7 +554,9 @@ testing_rescaled <- testing %>%
 res_1a <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
 summary(res_1a)
 plogis(fixef(res_1a)["(Intercept)"]) # block 0
-plogis(fixef(res_1a)["(Intercept)"] + fixef(res_1_a)["block"] * 3)  # block 3
+plogis(fixef(res_1a)["(Intercept)"] + fixef(res_1a)["block"] * 3)  # block 3
+
+res_1a2 <- glmer(correct ~ block + (1 |participant_id), data = t1_testing, family = binomial)
 
 # plot
 emm_1_a <- emmeans(res_1_a, ~ block, at = list(block = 0:3), type = "response")
@@ -645,8 +647,8 @@ plot1b <- ggplot() +
 cowplot::plot_grid(plot1a, plot1b, labels = c("A", "B"))
 
 # ---confidence all---
-res_1_c <- lmer(mean_confidence ~ block * comparison_type + (1|participant_id), data = all_confidence_by_comptype)
-summary(res_1_c)
+res_1c <- lmer(mean_confidence ~ block * comparison_type + (1|participant_id), data = all_confidence_by_comptype)
+summary(res_1c)
 
 # plot
 emm_1_c <- emmeans(res_1_c, ~ block, at = list(block = 0:3), type = "response")
@@ -670,8 +672,8 @@ plot1c <- ggplot() +
   theme_minimal()
 
 # ---confdiff t1---
-res_1_d <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
-summary(res_1_d)
+res_1d <- lmer(confdiff ~ block + (1|participant_id), data = t1_confdiff)
+summary(res_1d)
 
 # plot
 emm_1_d <- emmeans(res_1_d, ~ block, at = list(block = 0:3), type = "response")
@@ -732,19 +734,19 @@ cowplot::plot_grid(plot1e, plot1d, labels = c("A", "B"))
 # ANALYSIS 2: LMEM effect of block n on accuracy at block n+1, controling for accuracy at block n
 # at this point the relationship between block and accuracy is not significant, so holding off on this for now
 
-res_2_a <- glmer(
+res_2a <- glmer(
   correct ~ prev_confidence + prev_accuracy + (1 | participant_id),
   data = t1_testing_lagged,
   family = binomial
 )
-summary(res_2_a)
+summary(res_2a)
 
-res_2_b <- glmer(
+res_2b <- glmer(
   correct ~ prev_confdiff + prev_accuracy + (1 | participant_id),
   data = t1_testing_lagged,
   family = binomial
 )
-summary(res_2_b)
+summary(res_2b)
 
 
 # ANALYSIS 3: LMEM effect of block and destination community on accuracy and RT
@@ -771,7 +773,7 @@ summary(res_cat7)
 res_cats16 <- lmer(log(rt) ~ block * correct_dest_community + (1|participant_id) + (1|question_code), data = subset(t1_testing, category %in% c(1, 6)))
 summary(res_cats16)
 
-emtrends(res_3_b, ~ correct_dest_community, var = "block")
+emtrends(res_3b, ~ correct_dest_community, var = "block")
 # looks like X is faster even than W. all results on the log scale! so need to convert before interpreting
 
 # plot
@@ -806,11 +808,11 @@ plot3 <- ggplot() +
   theme_minimal() +
   theme(legend.position = "bottom")
 
-res_3_c <- lmer(mean_confidence ~ block * correct_dest_community + (1|participant_id), data = t1_confidence_by_dest_community)
-summary(res_3_c)
+res_3c <- lmer(mean_confidence ~ block * correct_dest_community + (1|participant_id), data = t1_confidence_by_dest_community)
+summary(res_3c)
 
-res_3_d <- lmer(confdiff ~ block * correct_dest_community + (1|participant_id), data = t1_confidence_by_dest_community)
-summary(res_3_d)
+res_3d <- lmer(confdiff ~ block * correct_dest_community + (1|participant_id), data = t1_confidence_by_dest_community)
+summary(res_3d)
 
 
 # ANALYSIS 4: LMEM effect of block and destination node type on accuracy and RT
@@ -828,12 +830,16 @@ res_4_d <- lmer(confdiff ~ block * correct_dest_node_type + (1|participant_id), 
 summary(res_4_d)
 
 
-# ANALYSIS 5: LMEM effect of block on accuracy and RT of learniing phase
-res_5_a <- glmer(cover_correct ~ block + (1|participant_id), data = learning, family = binomial)
-summary(res_5_a)
+res_4a2 <- glmer(correct ~ block + correct_dest_node_type + (1|participant_id), data = t1_testing, family = binomial)
+summary(res_4a2)
 
-res_5_b <- lmer(log(cover_rt) ~ block + (1|participant_id), data = learning)
-summary(res_5_b)
+
+# ANALYSIS 5: LMEM effect of block on accuracy and RT of learniing phase
+res_5a <- glmer(cover_correct ~ block + (1|participant_id), data = learning, family = binomial)
+summary(res_5a)
+
+res_5b <- lmer(log(cover_rt) ~ block + (1|participant_id), data = learning)
+summary(res_5b)
 
 emm_5_a <- emmeans(res_5_a, ~ block, at = list(block = 0:3), type = "response")
 emm_5_a_df <- as.data.frame(emm_5_a)
@@ -1433,5 +1439,6 @@ plot_r1 <- ggplot() +
 
 
 
-
+q <- read.csv("data/2afc_question_candidates_v3.csv")
+subset(q, comparison_pair_tag == "B1XB__B2WB" & base %in% c("B","D"))
 
