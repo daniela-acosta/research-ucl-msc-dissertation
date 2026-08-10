@@ -65,6 +65,12 @@ GRAPH_EDGES: frozenset = frozenset({
     frozenset({"G", "H"}),
 })
 
+# Community membership and boundary status — used to derive W/X and B/NB from node labels.
+# Safer than parsing comparison_pair_tag, whose A/B ordering does not map reliably to
+# optionA/optionB in the trial data.
+NODE_COMMUNITY = {"A": 0, "B": 0, "C": 0, "D": 0, "E": 1, "F": 1, "G": 1, "H": 1}
+BOUNDARY_NODES = {"B", "D", "E", "G"}
+
 # ---------------------------------------------------------------------------
 # Column type definitions
 # ---------------------------------------------------------------------------
@@ -196,30 +202,37 @@ def add_correct_option_properties(df: pd.DataFrame) -> pd.DataFrame:
     correct_dest_community: W (within) or X (cross-community) for the plausible option.
     correct_dest_node_type: B (boundary) or NB (non-boundary) for the plausible option.
     Both are NaN for T0 (no plausible option) and T2 (both options plausible).
-    Derived by parsing the comparison_pair_tag, e.g. 'NB1WB__NB2XB'.
+
+    Derived from the actual destination node identity, NOT from comparison_pair_tag parsing.
+    The A/B ordering in comparison_pair_tag is a category label and does not reliably
+    correspond to optionA/optionB in the trial data (74 mismatches confirmed in the
+    candidates CSV).
     """
-    tags = df["comparison_pair_tag"].str.split("__", expand=True)
-    tag_a, tag_b = tags[0], tags[1]
+    is_a   = df["option_a_plausible"].fillna(False).astype(bool)
+    is_b   = df["option_b_plausible"].fillna(False).astype(bool)
+    is_t1  = is_a ^ is_b
+    l_is_a = df["left_is_option_a"].fillna(False).astype(bool)
 
-    # Regex: (base_type)(steps)(W|X)(NB|B) — try NB before B in dest group
-    _wc  = r"^(?:NB|B)\d(W|X)(?:NB|B)$"   # captures within-code
-    _dt  = r"^(?:NB|B)\d(?:W|X)(NB|B)$"   # captures dest node type
+    opt_a_node = np.where(l_is_a, df["option_left"], df["option_right"])
+    opt_b_node = np.where(l_is_a, df["option_right"], df["option_left"])
 
-    wc_a = tag_a.str.extract(_wc, expand=False)
-    dt_a = tag_a.str.extract(_dt, expand=False)
-    wc_b = tag_b.str.extract(_wc, expand=False)
-    dt_b = tag_b.str.extract(_dt, expand=False)
+    correct_dest = pd.Series(
+        np.where(is_a, opt_a_node, np.where(is_b, opt_b_node, np.nan)),
+        index=df.index,
+    )
 
-    is_a = df["option_a_plausible"].fillna(False).astype(bool)
-    is_b = df["option_b_plausible"].fillna(False).astype(bool)
-    is_t1 = is_a ^ is_b  # exactly one plausible → T1
+    base_comm = df["base_node"].map(NODE_COMMUNITY)
+    dest_comm = correct_dest.map(NODE_COMMUNITY)
 
+    mask = is_t1 & correct_dest.notna()
     df["correct_dest_community"] = pd.NA
     df["correct_dest_node_type"] = pd.NA
-    df.loc[is_t1 & is_a, "correct_dest_community"] = wc_a[is_t1 & is_a]
-    df.loc[is_t1 & is_a, "correct_dest_node_type"] = dt_a[is_t1 & is_a]
-    df.loc[is_t1 & is_b, "correct_dest_community"] = wc_b[is_t1 & is_b]
-    df.loc[is_t1 & is_b, "correct_dest_node_type"] = dt_b[is_t1 & is_b]
+    df.loc[mask, "correct_dest_community"] = np.where(
+        base_comm[mask] == dest_comm[mask], "W", "X"
+    )
+    df.loc[mask, "correct_dest_node_type"] = np.where(
+        correct_dest[mask].isin(BOUNDARY_NODES), "B", "NB"
+    )
     return df
 
 
@@ -251,17 +264,19 @@ def add_choice_bias_variables(df: pd.DataFrame) -> pd.DataFrame:
     df["is_dest_community_comparison"] = wc_a != wc_b
     df["is_dest_node_type_comparison"]  = dt_a != dt_b
 
-    chose_a      = df["chose_option_a"].fillna(False).astype(bool)
     not_timed_out = ~df["timed_out"].fillna(True).astype(bool)
-
-    chosen_wc = np.where(chose_a, wc_a, wc_b)
-    chosen_dt = np.where(chose_a, dt_a, dt_b)
-
     is_comm = df["is_dest_community_comparison"] & not_timed_out
     is_nt   = df["is_dest_node_type_comparison"]  & not_timed_out
 
-    df["chosen_community_is_X"] = np.where(is_comm, (chosen_wc == "X").astype(float), np.nan)
-    df["chosen_nodetype_is_B"]  = np.where(is_nt,   (chosen_dt == "B").astype(float), np.nan)
+    # Derive from chosen_node identity — avoids the comparison_pair_tag A/B ordering bug.
+    base_comm   = df["base_node"].map(NODE_COMMUNITY)
+    chosen_comm = df["chosen_node"].map(NODE_COMMUNITY)
+    df["chosen_community_is_X"] = np.where(
+        is_comm, (base_comm != chosen_comm).astype(float), np.nan
+    )
+    df["chosen_nodetype_is_B"] = np.where(
+        is_nt, df["chosen_node"].isin(BOUNDARY_NODES).astype(float), np.nan
+    )
 
     return df
 
